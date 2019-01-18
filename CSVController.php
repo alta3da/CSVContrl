@@ -497,6 +497,8 @@ Class CSVClass extends CSVModel{
 
             }
 
+            var_dump($markup_row_keys);
+
             if($data[0]){
 
                 echo '<table class="print_data_table">';
@@ -518,9 +520,22 @@ Class CSVClass extends CSVModel{
 
 
                 /* Retrieving Table Body */
-                foreach($data as $key=>$row){
 
-                    echo '<tr><td>'.($row_num + 1).'</td>';              
+
+                foreach($data as $key=>$row){                    
+                    
+                    if($this->checkRowUpdate($row_num,$markup_row_keys)){
+
+                        echo '<tr style="background:red">';
+
+                    }
+
+                    else{
+
+                        echo '<tr>';
+                    }                    
+                    
+                    echo '<td>'.($row_num + 1).'</td>';              
                                     
                     foreach($row as $value){
 
@@ -544,6 +559,19 @@ Class CSVClass extends CSVModel{
             echo '<span class="success-info">No data to print</span>';
         }
         
+    }
+
+    private function boolean checkRowUpdate($row_num,$markup_row_keys){
+
+        foreach($markup_row_keys as $markup_key){
+
+            if($row_num == $markup_key){
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function printDataRow(array $data){
