@@ -523,23 +523,36 @@ Class CSVClass extends CSVModel{
 
 
                 foreach($data as $key=>$row){                    
-                    
+                                        
+                    echo '<tr>';
+
                     if($this->checkRowUpdate($row_num,$markup_row_keys)){
 
-                        echo '<tr style="background:red">';
+                        echo '<td style="background:red">';
 
                     }
 
                     else{
 
-                        echo '<tr>';
-                    }                    
+                        echo '<td>';
+                    } 
                     
-                    echo '<td>'.($row_num + 1).'</td>';              
+                    echo ($row_num + 1).'</td>';              
                                     
                     foreach($row as $value){
 
-                    echo '<td>'.$value.'</td>';            
+                        if($this->checkRowUpdate($row_num,$markup_row_keys)){
+
+                            echo '<td style="background:red">';
+    
+                        }
+
+                        else{
+
+                            echo '<td>';
+                        }
+
+                    echo $value.'</td>';            
                                 
                     }
 
@@ -561,7 +574,7 @@ Class CSVClass extends CSVModel{
         
     }
 
-    private function boolean checkRowUpdate($row_num,$markup_row_keys){
+    private function checkRowUpdate(int $row_num,array $markup_row_keys){
 
         foreach($markup_row_keys as $markup_key){
 
