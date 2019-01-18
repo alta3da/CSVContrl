@@ -134,11 +134,22 @@ Class CSVClass extends CSVModel{
 
                 foreach($this->_checks_array as $check_pattern){
 
-                    $coinsidence_patterns[$check_pattern] = $this->printAttentions($check_pattern);
+                    $markup_rows[] = $this->printAttentions($check_pattern);
                     
                 }
 
-                $this->printData($this->_file,['mode'=>'show', 'start'=>0]);
+                /* Placing Reps rows into $reps_rows Array */
+
+                foreach($markup_rows as $markup_key=>$markup_value){
+
+                    $markup_rows = explode(',',$markup_value);
+
+                    $markup_rows[$markup_key] = $markup_value;
+                }              
+                
+                var_dump($markup_rows);
+
+                $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows]);
                 
             }
         }
@@ -473,7 +484,15 @@ Class CSVClass extends CSVModel{
 
         $markup_row_num = 0;
 
-        $markup_row_keys = array();
+        if(!isset($params['markup_rows'])){
+
+            $markup_row_keys = array();
+        }
+        
+        else{
+
+            $markup_row_keys = $params['markup_rows'];
+        }
 
         $row_num = 0;     
 
@@ -528,7 +547,7 @@ Class CSVClass extends CSVModel{
 
                     /* Markup updated row */
 
-                    echo ($this->checkRowUpdate($row_num,$markup_row_keys))? '<td style="color:white; background:red">' : '<td>'; 
+                    echo ($this->checkRowUpdate($row_num,$markup_row_keys))? '<td style="color:white; background:rgba(255,0,0,0.3)">' : '<td>'; 
 
                     /* Start rows number from 0 or 1 depending on $params['start'] */
                     
@@ -536,7 +555,7 @@ Class CSVClass extends CSVModel{
                                     
                     foreach($row as $value){
 
-                        echo ($this->checkRowUpdate($row_num,$markup_row_keys))? '<td style="color:white; background:red">' : '<td>';   
+                        echo ($this->checkRowUpdate($row_num,$markup_row_keys))? '<td style="color:white; background:rgba(255,0,0,0.3)">' : '<td>';   
 
                         echo $value.'</td>';            
                                 
@@ -742,14 +761,19 @@ Class CSVClass extends CSVModel{
         
         if($count_patterns = $this->getCountPatterns($pattern)){
 
+            $reps_rows = array();
+
             echo '<br><br><span class="warning-info">ATTENTION!</span>';  
 
             foreach($count_patterns as $row){
 
                 echo '<br/><span class="warning-info">'.$row['count'].' Repeating patterns ('.$row['pattern'].') found at CSV rows: '.$row['rows'].' (Rows '.$this->getCSVRows($row['rows']).' in CSV file)</span>';
                 echo '<br/><span class="danger-info">Must be deleted '.($row['count']-1).' row(s): '.substr($row['rows'],2, strlen($row['rows'])).'</span>';
-    
-            }           
+                
+                $reps_rows = $row['rows'];
+            } 
+            
+            return $reps_rows;
 
         }
 
