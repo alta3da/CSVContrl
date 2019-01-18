@@ -171,7 +171,7 @@ Class CSVClass extends CSVModel{
             
                             $this->printData($this->_file,['mode'=>'show']);
 
-                            echo '<br><span class="warning-info"><b>Deleted pattern:</b> '.$deleteFeedback['compared_row'].' :</span> at row: '.$deleteFeedback['row_count'];
+                            echo '<br><span class="warning-info"><b>Deleted pattern:</b> '.$deleteFeedback['compared_row'].' :</span> at row №: '.$deleteFeedback['row_count'];
     
                             echo '<br><span class="info-info">Optimized CSV file:</span> '.count($this->_file).' rows';
                         } 
@@ -212,12 +212,6 @@ Class CSVClass extends CSVModel{
 
             $new_CSV_data_count = $csv_rows_count - $db_rows_count;
 
-            if(!isset($this->_opt['promise'])){
-
-                echo '<hr><br><span class="info-info">New CSV data contains:</span> '.$new_CSV_data_count.' rows'; 
-
-            }
-
             $csv_start_row = $csv_rows_count - $new_CSV_data_count;
 
             $csv_end_row = $csv_rows_count - 1; 
@@ -225,6 +219,8 @@ Class CSVClass extends CSVModel{
             $this->separateCSVData($csv_start_row); 
             
             if(!isset($this->_opt['promise'])){
+
+                echo '<hr><br>New CSV data contains: '.$new_CSV_data_count.' rows'; 
 
                 echo '<br><br>New data List: ';
 
@@ -314,8 +310,22 @@ Class CSVClass extends CSVModel{
                 *   CSV file should be absolutely identical to DB content 
                 */
 
-            
-                $this->runConsistencyCheck();
+
+                if(!isset($this->_opt['promise'])){
+
+                    $final_check_array = $this->runConsistencyCheck();
+
+                    if(empty($final_check_array)){
+        
+                        echo '<br><br><span class="success-info">Final check:CSV Data is absolutely identical to DB</span>';
+                    }
+        
+                    else{
+        
+                        echo '<br><br><span class="danger-info">CSV Data is NOT identical to DB Data. Please, check your Data</span>';
+                    }
+        
+                }
 
                 echo '<br><br><a href="/data_checker.php" class="btn btn-primary"> Back to Start </a>';
                 
@@ -401,23 +411,8 @@ Class CSVClass extends CSVModel{
                         
         $final_check_array = $this->checkArraysOnIdentity($this->_file, $this->_db_data);  
         
-        return $final_check_array;
-       
-        
-        if(!isset($this->_opt['promise'])){
-
-            if(empty($final_check_array)){
-
-                echo '<br><br><span class="success-info">Final check:CSV Data is absolutely identical to DB</span>';
-            }
-
-            else{
-
-                echo '<br><br><span class="danger-info">CSV Data is NOT identical to DB Data. Please, check your Data</span>';
-            }
-
-        }
-        
+        return $final_check_array;    
+                
     }
 
     private function flushUpdateRequirements(){
@@ -513,7 +508,7 @@ Class CSVClass extends CSVModel{
                 /* Retrieving Table Body */
                 foreach($data as $key=>$row){
 
-                    echo '<tr><td>'.$row_num.'</td>';              
+                    echo '<tr><td>'.($row_num + 1).'</td>';              
                                     
                     foreach($row as $value){
 
