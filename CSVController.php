@@ -473,11 +473,10 @@ Class CSVClass extends CSVModel{
 
         $markup_row_keys = array();
 
-        $row_num = 0;
-               
+        $row_num = 0;     
+
 
         if(!empty($data)){
-
            
             if($params['mode'] == 'update'){            
             
@@ -489,16 +488,19 @@ Class CSVClass extends CSVModel{
     
                         $data[$row_key]['Update'] = '<form method="post" action="/data_checker.php?save=1&show_reps=0&update_id='.$row_key.'&promise=1"><input type="submit" value="Update DB"/></form>';
                         
+                        $markup_row_keys[] = $markup_row_num;
+                    
                     }
+
+                    $markup_row_num++;
                 }
 
             }
 
             if($data[0]){
 
-                echo '<table class="print_data_table">'; 
+                echo '<table class="print_data_table">';
 
-                
                 echo '<tr>';
 
                 /* Set up Table row number column */
