@@ -136,20 +136,24 @@ Class CSVClass extends CSVModel{
 
                     $markup_rows[] = $this->printAttentions($check_pattern);
                     
-                }
+                }               
+                
 
                 /* Placing Reps rows into $reps_rows Array */
 
-                foreach($markup_rows as $markup_key=>$markup_value){
+                foreach($markup_rows as $markup_key=>$markup_value){                    
 
-                    $markup_rows = explode(',',$markup_value);
+                    foreach($markup_value as  $item){
 
-                    $markup_rows[$markup_key] = $markup_value;
+                        $temp_rows = explode(',',$item);
+
+                        $all_markup_rows[$markup_key][] = $temp_rows;
+
+                    }                    
                 }              
                 
-                var_dump($markup_rows);
 
-                $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows]);
+               $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$all_markup_rows]);
                 
             }
         }
@@ -516,7 +520,7 @@ Class CSVClass extends CSVModel{
                     $markup_row_num++;
                 }
 
-            }
+            }            
 
             if($data[0]){
 
@@ -540,12 +544,21 @@ Class CSVClass extends CSVModel{
 
                 /* Retrieving Table Body */
 
+                echo '<pre>';
 
-                foreach($data as $key=>$row){                    
-                                        
+                print_r($markup_row_keys);
+
+                echo '</pre>';               
+
+
+                foreach($data as $key=>$row){ 
+                    
+                                                            
                     echo '<tr>';
 
                     /* Markup updated row */
+
+                    if($this->checkRowUpdate($row_num,$markup_row_keys)){ echo 'mark row: '.$row_num;}
 
                     echo ($this->checkRowUpdate($row_num,$markup_row_keys))? '<td style="color:white; background:rgba(255,0,0,0.3)">' : '<td>'; 
 
@@ -579,13 +592,39 @@ Class CSVClass extends CSVModel{
         
     }
 
-    private function checkRowUpdate(int $row_num,array $markup_row_keys){
+    private function checkRowUpdate(int $row_num,array $markup_row_keys){ 
+
+        $markup_row_keys = array_values($markup_row_keys);
+        
+        var_dump($markup_row_keys);
+        
 
         foreach($markup_row_keys as $markup_key){
 
-            if($row_num == $markup_key){
+            /* If here comes NOT Array - compare Keys */
 
-                return true;
+            if(gettype($markup_key) != 'array'){
+
+                if($row_num == $markup_key){
+
+                    return true;
+                }
+
+            } 
+
+            /* If here comes Array - cycle Row to get Keys */
+            
+            else{               
+
+                foreach($markup_key as $markup_item){
+
+                    if($row_num == $markup_item){
+
+                        echo 'got row: '.$row_num;
+
+                        return true;
+                    }
+                }
             }
         }
 
@@ -765,12 +804,14 @@ Class CSVClass extends CSVModel{
 
             echo '<br><br><span class="warning-info">ATTENTION!</span>';  
 
-            foreach($count_patterns as $row){
+            foreach($count_patterns as $row){                
+
+                $row['rows'] = str_replace(",,","",$row['rows']);
 
                 echo '<br/><span class="warning-info">'.$row['count'].' Repeating patterns ('.$row['pattern'].') found at CSV rows: '.$row['rows'].' (Rows '.$this->getCSVRows($row['rows']).' in CSV file)</span>';
                 echo '<br/><span class="danger-info">Must be deleted '.($row['count']-1).' row(s): '.substr($row['rows'],2, strlen($row['rows'])).'</span>';
                 
-                $reps_rows = $row['rows'];
+                $reps_rows[] = $row['rows'];
             } 
             
             return $reps_rows;
@@ -841,7 +882,7 @@ Class CSVClass extends CSVModel{
     
                     $count_patterns[$count_patterns_row]['count'] = "";
     
-                    $count_patterns[$count_patterns_row]['rows'] = "";
+                    $count_patterns[$count_patterns_row]['rows'] = ",";
     
                     $count_patterns_row ++;
     
@@ -872,7 +913,7 @@ Class CSVClass extends CSVModel{
     
                         if(!$count_patterns[$pat_key]['rows']){
     
-                            $count_patterns[$pat_key]['rows'] .= $key;
+                            $count_patterns[$pat_key]['rows'] .= ','.$key;
                         }
     
                         else{
