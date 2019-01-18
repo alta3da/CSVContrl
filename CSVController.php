@@ -136,7 +136,9 @@ Class CSVClass extends CSVModel{
 
                     $coinsidence_patterns[$check_pattern] = $this->printAttentions($check_pattern);
                     
-                }  
+                }
+                
+                $this->printData($this->_file,['mode'=>'show']);
             
             }
         }
@@ -486,7 +488,7 @@ Class CSVClass extends CSVModel{
 
                     if(isset($params['data'][$row_key]) && !empty($params['data'][$row_key])){                        
     
-                        $data[$row_key]['Update'] = '<form method="post" action="/data_checker.php?save=1&show_reps=0&update_id='.$row_key.'&promise=1"><input type="submit" value="Update DB"/></form>';
+                        $data[$row_key]['Update'] = '<form method="post" action="/data_checker.php?save=1&show_reps=0&update_id='.$row_key.'&promise=1"><input type="submit" class="btn btn-light" value="Update DB"/></form>';
                         
                         $markup_row_keys[] = $markup_row_num;
                     
@@ -496,8 +498,6 @@ Class CSVClass extends CSVModel{
                 }
 
             }
-
-            var_dump($markup_row_keys);
 
             if($data[0]){
 
@@ -528,7 +528,7 @@ Class CSVClass extends CSVModel{
 
                     if($this->checkRowUpdate($row_num,$markup_row_keys)){
 
-                        echo '<td style="background:red">';
+                        echo '<td style="color:white; background:red">';
 
                     }
 
@@ -543,7 +543,7 @@ Class CSVClass extends CSVModel{
 
                         if($this->checkRowUpdate($row_num,$markup_row_keys)){
 
-                            echo '<td style="background:red">';
+                            echo '<td style="color:white; background:red">';
     
                         }
 
