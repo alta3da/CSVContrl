@@ -198,6 +198,7 @@ Class CSVClass extends CSVModel{
             
            
             if(!isset($this->_opt['promise'])){
+                
                 echo '<hr><br><span class="info-info">Data statistics</span>: <br> CSV data contains '.$csv_rows_count.' rows <br> DB contains: '.$db_rows_count.' rows';
 
                     /* If Db Data contains MORE rows that CSV Data - stop file proceeding */
@@ -280,6 +281,11 @@ Class CSVClass extends CSVModel{
 
             if(!isset($this->_opt['promise'])){
 
+                if(!empty($nonidents_array)){
+
+                    echo '<span>DB Update Required!</span>';
+                }               
+                
                 $this->printData($this->_old_file_data,['mode'=>'update', 'data'=>$nonidents_array]);
 
             }
@@ -322,7 +328,7 @@ Class CSVClass extends CSVModel{
         
                     else{
         
-                        echo '<br><br><span class="danger-info">CSV Data is NOT identical to DB Data. Please, check your Data</span>';
+                        echo '<br><br><span class="danger-info">CSV Data is NOT identical to DB Data. Please, Update your Data</span>';
                     }
         
                 }
@@ -463,8 +469,12 @@ Class CSVClass extends CSVModel{
 
     private function printData(array $data, array $params){
 
+        $markup_row_num = 0;
+
+        $markup_row_keys = array();
+
         $row_num = 0;
-       
+               
 
         if(!empty($data)){
 
