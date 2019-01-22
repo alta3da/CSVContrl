@@ -15,6 +15,8 @@ if(isset($_GET['slug'])){
 
 Class CSVClass extends CSVModel{
 
+    private $_init_file = array();
+
     private $_file = array();
 
     private $_db_table = '`points`';
@@ -74,6 +76,12 @@ Class CSVClass extends CSVModel{
         $this->readCSVfile();
 
         /**
+         * Copy initial CSV file Data into $this->_init_file
+         */
+
+        $this->_init_file = $this->_file;
+
+        /**
          * Initialize DB Class
          */
 
@@ -90,7 +98,7 @@ Class CSVClass extends CSVModel{
     public function processCSVFile(){   
 
                 
-        echo '<span class="info-info"><h3>Prosessing CSV file to DB table</h3></span>';
+        echo '<span class="info-info"><h3><b>Prosessing CSV file to DB table ::</b></h3></span>';
         
         /**
          * Save to DB without Checks
@@ -153,27 +161,35 @@ Class CSVClass extends CSVModel{
 
             }
 
-            foreach($this->_checks_array as $check_pattern){              
-              
+            foreach($this->_checks_array as $check_pattern){ 
+                              
                 $deleteFeedback = $this->deleteNonUniqueData($coinsidence_patterns[$check_pattern], $check_pattern);                
 
                 if(!isset($this->_opt['promise'])){
 
                     if($deleteFeedback){
         
-                        echo '<br><br><span class="warning-info"><b>Checking Pattern "'.$deleteFeedback['c_pattern'].'"</b> :: unset: '.$deleteFeedback['rows_deleted']. ' rows: '.substr($deleteFeedback['rows_log'],0,strlen($deleteFeedback['rows_log'])-1).'</span>';
+                        echo '<hr><h3><span class="warning-info">Checking Pattern "'.$deleteFeedback['c_pattern'].'"</h3></span>';
                         
             
                         if($deleteFeedback['rows_deleted']){                           
                             
-                            echo '<br><span class="warning-info"><b>Deleted pattern:</b> '.$deleteFeedback['compared_row'].' :</span> at row №: '.$deleteFeedback['row_count'];
-    
-                            echo '<br><span class="info-info">Optimized CSV file:</span> '.count($this->_file).' rows';
+                            echo '<br><span class="warning-info"><b>Deleted pattern:</b> '.$deleteFeedback['compared_row'].' :</span>:: <b>unset: '.$deleteFeedback['rows_deleted']. ' row(s) at row №: '.$deleteFeedback['deleted_row'].'</b>';
 
-                            $markup_rows = $this->getMarkupRows('off'); 
-                                                        
-                            $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows, 'patt_type'=>$check_pattern]);
+                            $this->printDataRow($this->_init_file[$deleteFeedback['deleted_row']], ['row_num'=>$deleteFeedback['deleted_row'], 'row_style'=>'deleted']);
+    
+                            echo '<br><span class="info-info"><b>Optimized CSV file:</b></span> '.count($this->_file).' rows<br><br>';
+                            
                         } 
+
+                        else{
+
+                            echo "<span class='success-info'><b>No repeated rows occured</b> OR had been deleted (if existed) in previous checks</span><br><br>";
+                        }
+
+                        $markup_rows = $this->getMarkupRows('off'); 
+                                                        
+                        $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows, 'patt_type'=>$check_pattern]);
                     
                     }
                     
@@ -510,9 +526,10 @@ Class CSVClass extends CSVModel{
 
         /** Get Rows Markup Table */
 
-        if($params['patt_type']){
+        if(isset($params['patt_type'])){
 
             $rows_markup_array =  $this->getRowsTypeMarkupArray($data,$markup_row_keys, $params['patt_type']);
+
         }
 
         else{
@@ -520,12 +537,11 @@ Class CSVClass extends CSVModel{
             $rows_markup_array =  $this->getRowsMarkupArray($data,$markup_row_keys);
 
         }
-
         
         
-        echo '<pre>';
-        print_r($rows_markup_array);
-        echo'</pre>';
+        // echo '<pre>';
+        // print_r($rows_markup_array);
+        // echo'</pre>';
         
         /** Setting to  $data[$row_key]['Update'] Update button code of 'No change' label */
       
@@ -597,9 +613,9 @@ Class CSVClass extends CSVModel{
 
                         }
                        
-                        echo '<pre>';
-                        print_r($row_type);
-                        echo'</pre>';                                              
+                        // echo '<pre>';
+                        // print_r($row_type);
+                        // echo'</pre>';                                              
                     
                     } 
                     
@@ -666,9 +682,9 @@ Class CSVClass extends CSVModel{
         
         $markup_type_row_keys[$type] = $markup_row_keys[$type];
         
-        echo '<pre>';
-        print_r($markup_type_row_keys);
-        echo'</pre>';
+        // echo '<pre>';
+        // print_r($markup_type_row_keys);
+        // echo'</pre>';
         
 
         $markup_row = array();
@@ -783,8 +799,8 @@ Class CSVClass extends CSVModel{
     }
 
 
-    private function printDataRow(array $data){
-       
+    private function printDataRow(array $data, array $params){
+              
 
         if($data){          
 
@@ -792,6 +808,11 @@ Class CSVClass extends CSVModel{
 
             /* Retrieving Table Head */
             echo '<tr>';
+
+            /* If exists - Add row_num to the Table */
+            echo (isset($params['row_num']))?'<td> № </td>':'';
+
+
             foreach($data as $key=>$value){             
 
                 echo '<td>'.$key.'</td>';                
@@ -800,10 +821,23 @@ Class CSVClass extends CSVModel{
             echo '</tr>';
 
 
+            
+            /** Applying Row style */
+             if(isset($params['row_style'])){
+
+                switch($params['row_style']){
+
+                    case 'deleted':
+
+                    echo'<tr style="background:rgba(255,0,0,0.3)">'; 
+                }
+             }             
+             
+             /* If exists - Add row_num to the Table */
+            echo (isset($params['row_num']))?'<td>'.$params['row_num'].'</td>':'';
+
+
              /* Retrieving Table Body */
-
-             echo '<tr>';            
-
             foreach($data as $row){
 
                 echo '<td>'.$row.'</td>';          
@@ -954,7 +988,26 @@ Class CSVClass extends CSVModel{
         
         if(!empty($count_patterns)){
 
-            $reps_rows = array();              
+            return $this->printAttentionsRow($pattern, $count_patterns, $mode);
+
+        }
+
+        else{
+
+            echo '<br/><span class="success-info"> No '.$pattern.' pattern repeats found</span>';
+
+        }          
+               
+    }
+
+
+    private function printAttentionsRow(string $pattern, array $count_patterns, string $show_mode){
+
+        $reps_rows = array(); 
+
+
+            echo($show_mode === 'show')?'<br><span class="warning-info"><h3>ATTENTION!</h3></span>':'';
+
 
             foreach($count_patterns as $row){                
 
@@ -964,11 +1017,10 @@ Class CSVClass extends CSVModel{
                  * If $mode == show - display ATTENTIONS warning
                  */
 
-                if($mode === 'show'){
-
-                    echo '<br/><span class="warning-info">ATTENTION!</span>';
-                    echo '<br/><span class="warning-info">'.$row['count'].' Repeating patterns ('.$row['pattern'].') found at CSV rows: '.$row['rows'].' (Rows '.$this->getCSVRows($row['rows']).' in CSV file)</span>';
-                    echo '<br/><span class="danger-info">Must be deleted '.($row['count']-1).' row(s): '.substr($row['rows'],2, strlen($row['rows'])).'</span>';
+                if($show_mode === 'show'){
+                    
+                    echo '<br><b><span class="warning-info">'.$row['count'].' Repeating pattern " '.$pattern.' " ('.$row['pattern'].') found at CSV rows: '.$row['rows'].' </b>(Rows '.$this->getCSVRows($row['rows']).' in CSV file)</span>';
+                    echo '<br><br><span class="danger-info">Must be deleted '.($row['count']-1).' row(s): '.substr($row['rows'],2, strlen($row['rows'])).'</span><br><br>';
                                     
                 }                              
                 
@@ -979,18 +1031,10 @@ Class CSVClass extends CSVModel{
                 }
             }
             
-            echo($mode === "show")?'<hr>':'';
+            echo($show_mode === 'show')?'<hr>':'';
             
             return $reps_rows;
 
-        }
-
-        else{
-
-            echo '<br/><span class="success-info"> No '.$pattern.' pattern repeats found</span>';
-
-        }          
-               
     }
 
     private function getCSVRows($data){
@@ -1176,6 +1220,8 @@ Class CSVClass extends CSVModel{
 
         $rows_deleted = 0;
 
+        $deleted_row = 0;
+
         $rows_log = "";
       
         foreach ($this->_file as $key=>$value){            
@@ -1194,8 +1240,8 @@ Class CSVClass extends CSVModel{
                      
                         unset($this->_file[$key]); 
                         
-                        unset($this->_attentions[$c_pattern][$key]);
-
+                        $deleted_row =  $row_count;
+                       
                         $rows_deleted++;
 
                         $rows_log .= $row_count.',';
@@ -1220,6 +1266,8 @@ Class CSVClass extends CSVModel{
             'row_count'=>$row_count,
 
             'rows_log' => $rows_log,
+
+            'deleted_row'=>$deleted_row,
 
             'compared_row'=>$compared_row
 
