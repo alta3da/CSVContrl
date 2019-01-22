@@ -151,11 +151,15 @@ Class CSVClass extends CSVModel{
             
             if(!isset($this->_opt['promise'])){
 
-                echo '<br><br><span class="info-info">Initial CSV file:</span> '.count($this->_file).' rows';
+                echo '<br><br><span class="info-info"><b>Initial CSV file:</b></span> '.count($this->_file).' rows';
 
                 /**  getMarkupRows "off" argument tells that NO repeats attention warning must be shown*/
 
                 $markup_rows = $this->getMarkupRows('off');
+
+                echo '<pre>';
+                print_r($markup_rows);
+                echo '</pre>';
                
                 $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows]);
 
@@ -170,13 +174,20 @@ Class CSVClass extends CSVModel{
                     if($deleteFeedback){
         
                         echo '<hr><h3><span class="warning-info">Checking Pattern "'.$deleteFeedback['c_pattern'].'"</h3></span>';
+
+                        echo '<span class="info-info"><b>Initially detected</b> repeated rows: '.$this->printMarkupRowNum($check_pattern, $markup_rows).'</span>';
                         
             
                         if($deleteFeedback['rows_deleted']){                           
                             
-                            echo '<br><span class="warning-info"><b>Deleted pattern:</b> '.$deleteFeedback['compared_row'].' :</span>:: <b>unset: '.$deleteFeedback['rows_deleted']. ' row(s) at row №: '.$deleteFeedback['deleted_row'].'</b>';
+                            echo '<br><br><span class="warning-info"><b>Currently deleted pattern(s):</b> '.$deleteFeedback['compared_row'].' :</span>:: <b>unset: '.$deleteFeedback['rows_deleted']. ' row(s) : rows №: '.substr($deleteFeedback['rows_log'],0,strlen($deleteFeedback['rows_log'])-1).'</b>';
 
-                            $this->printDataRow($this->_init_file[$deleteFeedback['deleted_row']], ['row_num'=>$deleteFeedback['deleted_row'], 'row_style'=>'deleted']);
+                            $rows_to_print = explode(',',substr($deleteFeedback['rows_log'],0,strlen($deleteFeedback['rows_log'])-1));
+
+                            foreach($rows_to_print as $row_to_print){
+
+                                $this->printDataRow($this->_init_file[$deleteFeedback['deleted_row']], ['row_num'=>$row_to_print, 'row_style'=>'deleted']);
+                            }                            
     
                             echo '<br><span class="info-info"><b>Optimized CSV file:</b></span> '.count($this->_file).' rows<br><br>';
                             
@@ -184,7 +195,7 @@ Class CSVClass extends CSVModel{
 
                         else{
 
-                            echo "<span class='success-info'><b>No repeated rows occured</b> OR had been deleted (if existed) in previous checks</span><br><br>";
+                            echo "<br><br><span class='success-info'><b>No repeated rows occured</b> OR had been deleted (if existed) in previous checks</span><br><br>";
                         }
 
                         $markup_rows = $this->getMarkupRows('off'); 
@@ -214,7 +225,7 @@ Class CSVClass extends CSVModel{
            
             if(!isset($this->_opt['promise'])){
                 
-                echo '<hr><br><span class="info-info">Data statistics</span>: <br> CSV data contains '.$csv_rows_count.' rows <br> DB contains: '.$db_rows_count.' rows';
+                echo '<hr><br><span class="info-info"><b>Data statistics:</b></span> <br> CSV data contains '.$csv_rows_count.' rows <br> DB contains: '.$db_rows_count.' rows';
 
                     /* If Db Data contains MORE rows that CSV Data - stop file proceeding */
                 
@@ -380,6 +391,37 @@ Class CSVClass extends CSVModel{
 
     }
 
+    private function printMarkupRowNum(string $pattern, array $markup_rows){
+
+        $rep_string="";        
+
+        $markup_rows = $this->getMarkupRows('off');
+
+        foreach($markup_rows[$pattern] as $markup_rows){
+
+            foreach($markup_rows as $markup_key=>$markup_row){
+
+                if($markup_key >= count($markup_rows)-1){
+
+                    $rep_string .= $markup_row;
+                }
+
+                else{
+
+                    $rep_string .= $markup_row.",";
+                }
+                
+                
+            }
+
+            $rep_string .= ' : ';
+        }
+
+       return substr($rep_string,0,strlen($rep_string)-3);
+
+                        
+    }
+
     private function flushToDB(){
 
         if($rows_count = $this->_db->CSVtoDB($this->_new_file_data)){
@@ -407,7 +449,7 @@ Class CSVClass extends CSVModel{
 
             $tmp[] = array_shift($nonidents_array);             
                             
-            $this->printData( $tmp, ['mode'=>'show']);
+            $this->printDataRow( $tmp, ['row_num'=>0, 'row_style'=>'deleted']);            
 
         }
         else{
