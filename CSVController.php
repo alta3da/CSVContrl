@@ -172,7 +172,7 @@ Class CSVClass extends CSVModel{
 
                             $markup_rows = $this->getMarkupRows('off'); 
                                                         
-                            $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows]);
+                            $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows, 'patt_type'=>$check_pattern]);
                         } 
                     
                     }
@@ -492,13 +492,9 @@ Class CSVClass extends CSVModel{
         return;
     }
 
+    
     private function printData(array $data, array $params){
 
-        $markup_row_num = 0;
-        
-        $markup_row_count = 0;
-
-        
 
         if(!isset($params['markup_rows'])){
 
@@ -510,9 +506,26 @@ Class CSVClass extends CSVModel{
             $markup_row_keys = $params['markup_rows'];
         }
 
-        $markup_rows_array =  $this->checkRowMarkup($data,$markup_row_keys);
 
-        $row_num = 0;
+
+        /** Get Rows Markup Table */
+
+        if($params['patt_type']){
+
+            $rows_markup_array =  $this->getRowsTypeMarkupArray($data,$markup_row_keys, $params['patt_type']);
+        }
+
+        else{
+            
+            $rows_markup_array =  $this->getRowsMarkupArray($data,$markup_row_keys);
+
+        }
+
+        
+        
+        echo '<pre>';
+        print_r($rows_markup_array);
+        echo'</pre>';
         
         /** Setting to  $data[$row_key]['Update'] Update button code of 'No change' label */
       
@@ -527,12 +540,8 @@ Class CSVClass extends CSVModel{
                     if(isset($params['data'][$row_key]) && !empty($params['data'][$row_key])){                        
     
                         $data[$row_key]['Update'] = '<form method="post" action="/data_checker.php?save=1&show_reps=0&update_id='.$row_key.'&promise=1"><input type="submit" class="btn btn-light" value="Update DB"/></form>';
-                        
-                        $markup_row_keys[] = $markup_row_num;
-                    
-                    }
-
-                    $markup_row_num++;
+                                            
+                    }                  
                 }
 
             }            
@@ -557,61 +566,54 @@ Class CSVClass extends CSVModel{
                 echo '</tr>';
 
 
-                /* Retrieving Table Body */                           
+                /* Retrieving Table Body */ 
+                
+                $row_num = 0;
 
-                foreach($data as $key=>$row){ 
-
-                    /* $mark_row tells if <td> of the Row should be marked</td>*/
-
-                    $mark_row = false; 
-                    
-                    $markup_row_count = 0;
-                                                                               
-                    echo '<tr>';
+                foreach($data as $key=>$row){                  
+                       
 
                     /* Check if should markup updated row */                    
 
-                    if($row_type = $this->checkRowMarkup($row_num,$markup_row_keys)) {                       
-                        
-                        $mark_row = true;
+                    if($row_type = $this->checkRowMarkup($row_num,$rows_markup_array)) {
 
-                        $markup_row_count++;                        
+                        switch($row_type['type']){
+
+                            case "row_first_num":
+
+                             echo '<tr style="background:rgba(0,128,0,'.(0.3*$row_type['count']).');">';
+
+                             break;
+
+                             case "row_second_num":
+
+                             echo '<tr style="background:rgba(255,0,0,'.(0.3*$row_type['count']).');">';
+
+                             break;
+
+                             default:
+
+                             echo '<tr>';
+
+                        }
+                       
+                        echo '<pre>';
+                        print_r($row_type);
+                        echo'</pre>';                                              
                     
-                    }                   
-                  
+                    } 
+                    
 
                     /* Start rows number from 0 or 1 depending on $params['start'] */                 
                                         
                     echo(!isset($params['start']))?'<td>'.($row_num + 1).'</td>':'<td>'.$row_num.'</td>'; 
                                     
-                    foreach($row as $value){
+                    foreach($row as $value){                        
                         
-                        if($mark_row){ 
-                            
-                            if($markup_row_count == 1){
-
-                                echo '<td style="color:white; background:coral">';
-                            }
-
-                            if($markup_row_count > 1){
-
-                                echo '<td style="color:white; background:red">';
-                            }                         
-                           
-                        
-                        }
-                        
-                        else{
-
-                            echo '<td>';
-                        }
-
-                        echo $value.'</td>';                                                          
+                        echo '<td>'.$value.'</td>';                                                          
                                 
                     }
-
-                    $mark_row = false;
-
+                    
                     $row_num++;
 
                     echo '</tr>';
@@ -630,86 +632,105 @@ Class CSVClass extends CSVModel{
         
     }
 
- 
+    private function checkRowMarkup(int $row_num,array $rows_markup_array){
+
+        $row_type = array();
+
+        $type_count = 0;
+
+        foreach($rows_markup_array as $rows_markup_pattern){
+
+            foreach($rows_markup_pattern as $rows_markup_type=>$rows_markup_vals){
+
+                foreach($rows_markup_vals as $row_val){
+
+                    if($row_num == $row_val){
+
+                        $type_count++;                        
+
+                        $row_type=['type'=>$rows_markup_type, 'count'=>$type_count];
+                       
+                    }
+                }
+            }
+        }
+
+        return $row_type;
+       
+    }
+
+
+    private function getRowsTypeMarkupArray(array $data,array $markup_row_keys, string $type){       
+
+        $row_nums = array_keys($data); 
+        
+        $markup_type_row_keys[$type] = $markup_row_keys[$type];
+        
+        echo '<pre>';
+        print_r($markup_type_row_keys);
+        echo'</pre>';
+        
+
+        $markup_row = array();
+
+        foreach($row_nums as $row_num){
+
+            foreach($markup_type_row_keys as $patt_key=>$patt_row){ 
+            
+                //echo '<br>Checking pattern: '. $patt_key.' for ROW NUM: '.$row_num;               
+                
+    
+                foreach($patt_row as $row){
+
+                    $perPattern_rows_count = 0;
+    
+                    foreach($row as $item){
+    
+                        if($row_num == $item && strlen($item)){
+                        
+                            if($perPattern_rows_count == 0){
+        
+                                //echo '<br>perPattern_rows_count: '.$perPattern_rows_count;
+        
+                                //echo '<br>Check $row_num: '.$row_num.' with : '.$item.' :: MARK FIRST ROW';
+        
+                                $markup_row[$patt_key]['row_first_num'][] = $row_num;                           
+        
+                            } 
+                            
+                            else{
+    
+                               // echo '<br>Check $row_num: '.$row_num.' with : '.$item.' :: ELSE ROW';
+                            
+                               $markup_row[$patt_key]['row_second_num'][] = $row_num;  
+                            }                            
+                                                   
+                        }
+    
+                        $perPattern_rows_count++;
+        
+                    }
+                }  
+    
+            }
+
+        }
+                     
+        
+        return ($markup_row)? $markup_row:false;
+
+    }
 
 
 
-    private function checkRowMarkup(array $data,array $markup_row_keys){
+    private function getRowsMarkupArray(array $data,array $markup_row_keys){       
+
+        $row_nums = array_keys($data);  
 
         // echo '<pre>';
         // print_r($markup_row_keys);
-        // echo'</pre>'; 
-
-        $row_nums = array_keys($data);
-        
-      
-       
-               
-       /* Flatten $markup_row_keys Array into a string ($flat_array)  to get rid of multi-dimensional structure*/
-
-        // $perPattern_reps =array(); 
-        
-        // $perPattern_reps_keys = array_keys($markup_row_keys);        
-
-        // foreach($perPattern_reps_keys as $perPattern_key){
-
-        //     $perPattern_reps[$perPattern_key]="";
-        // }        
-
-        // foreach($markup_row_keys as $key=>$row){
-
-        //     if(!is_array($row)){
-
-        //         $perPattern_reps .= $row.",";  
-        //     }
-
-        //     else{
-
-        //         foreach($row as $row_item){
-
-        //             foreach($row_item as $r_key=>$r_item){
-
-        //                 $perPattern_reps[$key] .= $r_item.',';                       
-
-        //             }                        
-
-        //         }
-
-        //     }
-
-        // } 
-
-        // /**Removing back comma at the end of each Array value */
-
-        // foreach($perPattern_reps as $key=>$row){
-
-        //     if(substr($row,strlen($row)-1,strlen($row)) === ','){              
-
-        //         $perPattern_reps[$key] = substr($row,0,strlen($row)-1);
-        //     }
-
-        // }
-
-        // /**Converting each Array String value into Array values*/
-
-        // foreach($perPattern_reps as $key=>$row){                      
-
-        //     $perPattern_reps[$key] = explode(',',$row);
-            
-
-        // }
-
-        // echo '<pre>';
-        // print_r($perPattern_reps);
         // echo'</pre>';
         
-        //$flat_array=substr($flat_array,0,strlen($flat_array)-1);  
-
-               
-        //$one_level_markup_row_keys = explode(',', $flat_array);
-
-
-        /* Compare 1-level array items with $row_num to find Update row */ 
 
         $markup_row = array();
 
@@ -755,13 +776,7 @@ Class CSVClass extends CSVModel{
             }
 
         }
-        
-        
-        
-
-        // echo '<pre>';
-        // print_r($markup_row);
-        // echo'</pre>';       
+                     
         
         return ($markup_row)? $markup_row:false;
 
