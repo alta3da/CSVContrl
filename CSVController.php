@@ -362,14 +362,17 @@ Class CSVClass extends CSVModel{
         
     }
 
-    private function getMarkupRows($mode){        
-
+    private function getMarkupRows($mode){         
+        
         foreach($this->_checks_array as $check_pattern){
 
             $markup_rows[$check_pattern] = $this->printAttentions($check_pattern, $mode); 
                       
-        }
-                
+        }  
+        
+        echo '<pre>';
+        print_r($markup_rows);
+        echo'</pre>';
 
         /* Placing Reps rows into $reps_rows Array */
 
