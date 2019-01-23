@@ -248,7 +248,8 @@ Class CSVClass extends CSVModel{
 
                 echo '<h4>New data List: ';
 
-                $this->printData($this->_new_file_data,['mode'=>'show']);
+                $this->printData($this->_new_file_data,['mode'=>'update', 'no_rows_markup'=>true, 'markup_rows'=>[]]);
+                //$this->printData($this->_new_file_data,['mode'=>'show','markup_rows'=>[]]);
 
                 echo '</h4>';
 
@@ -631,7 +632,7 @@ Class CSVClass extends CSVModel{
         
         /** Setting to  $data[$row_key]['Update'] Update button code of 'No change' label */
       
-        if(!empty($data) && !empty($rows_markup_array)){
+        if(!empty($data)){
            
             if($params['mode'] == 'update'){            
             
@@ -675,41 +676,42 @@ Class CSVClass extends CSVModel{
                 foreach($data as $key=>$row){                  
                        
 
-                    /* Check if should markup updated row */                    
-
-                    if($row_type = $this->checkRowMarkup($row_num,$rows_markup_array)) {
-                       
-                        /**
-                         * if printData func was called with params['no_rows_markup'] - no row markup applied
-                         */
-
-                        if(isset($params['no_rows_markup']) && $params['no_rows_markup'] === true){$row_type['type'] = "default";}
-
-                        switch($row_type['type']){
-
-                            case "row_first_num":
-
-                             echo '<tr style="background:rgba(0,128,0,'.(0.3*$row_type['count']).');">';
-
-                             break;
-
-                             case "row_second_num":
-
-                             echo '<tr style="background:rgba(255,0,0,'.(0.3*$row_type['count']).');">';
-
-                             break;                             
-
-                             default:
-
-                             echo '<tr>';
-
-                        }
-                       
-                        // echo '<pre>';
-                        // print_r($row_type);
-                        // echo'</pre>';                                              
+                    /* Check if should markup updated row */
                     
-                    } 
+                    if(!empty($rows_markup_array)){
+
+                        if($row_type = $this->checkRowMarkup($row_num,$rows_markup_array)) {
+                       
+                            /**
+                             * if printData func was called with params['no_rows_markup'] - no row markup applied
+                             */
+    
+                            if(isset($params['no_rows_markup']) && $params['no_rows_markup'] === true){$row_type['type'] = "default";}
+    
+                            switch($row_type['type']){
+    
+                                case "row_first_num":
+    
+                                 echo '<tr style="background:rgba(0,128,0,'.(0.3*$row_type['count']).');">';
+    
+                                 break;
+    
+                                 case "row_second_num":
+    
+                                 echo '<tr style="background:rgba(255,0,0,'.(0.3*$row_type['count']).');">';
+    
+                                 break;                             
+    
+                                 default:
+    
+                                 echo '<tr>';
+    
+                            }                                                              
+                        
+                        } 
+                    }
+
+                    
                     
 
                     /* Start rows number from 0 or 1 depending on $params['start'] */                 
@@ -737,6 +739,11 @@ Class CSVClass extends CSVModel{
 
             echo '<span class="success-info">No data to print</span>';
         }
+        
+    }
+
+    private function printMarkupedRow(){
+
         
     }
 
