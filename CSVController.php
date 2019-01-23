@@ -175,12 +175,14 @@ Class CSVClass extends CSVModel{
         
                         echo '<hr><h3><span class="warning-info">Checking Pattern "'.$deleteFeedback['c_pattern'].'"</h3></span>';
 
-                        echo '<span class="info-info"><b>Initially detected</b> repeated rows: '.$this->printMarkupRowNum($check_pattern, $markup_rows).'</span>';
+                        $markup_row_num = $this->printMarkupRowNum($check_pattern, $markup_rows);
+
+                        echo ($markup_row_num)?'<span class="info-info"><b>Initially detected</b> repeated rows: '.$markup_row_num.'</span>':'';
                         
             
                         if($deleteFeedback['rows_deleted']){                           
                             
-                            echo '<br><br><span class="warning-info"><b>Currently deleted pattern(s):</b> '.$deleteFeedback['compared_row'].' :</span>:: <b>unset: '.$deleteFeedback['rows_deleted']. ' row(s) : rows №: '.substr($deleteFeedback['rows_log'],0,strlen($deleteFeedback['rows_log'])-1).'</b><br><br>';
+                            echo '<br><br><span class="warning-info"><b>Currently deleted pattern(s):</b> '.$deleteFeedback['compared_row'].' :</span>:: <span class="danger-info"><b>unset: '.$deleteFeedback['rows_deleted']. ' row(s) : rows №: '.substr($deleteFeedback['rows_log'],0,strlen($deleteFeedback['rows_log'])-1).'</b></span><br><br>';
 
                             $rows_to_print = explode(',',substr($deleteFeedback['rows_log'],0,strlen($deleteFeedback['rows_log'])-1));
 
@@ -237,7 +239,7 @@ Class CSVClass extends CSVModel{
            
             if(!isset($this->_opt['promise'])){
                 
-                echo '<hr><br><span class="info-info"><b>Data statistics:</b></span> <br> CSV data contains '.$csv_rows_count.' rows <br> DB contains: '.$db_rows_count.' rows';
+                echo '<hr><h4><span class="info-info"><b>Data statistics:</b></span> </h4> CSV data contains '.$csv_rows_count.' rows <br> DB contains: '.$db_rows_count.' rows';
 
                     /* If Db Data contains MORE rows that CSV Data - stop file proceeding */
                 
@@ -263,7 +265,7 @@ Class CSVClass extends CSVModel{
 
                 echo '<h4>New data List: ';
 
-                $this->printData($this->_new_file_data,['mode'=>'update', 'no_rows_markup'=>true, 'markup_rows'=>[]]);                
+                $this->printData($this->_new_file_data,['mode'=>'show', 'no_rows_markup'=>true, 'markup_rows'=>[]]);                
 
                 echo '</h4>';
 
@@ -306,7 +308,7 @@ Class CSVClass extends CSVModel{
                     
                         $this->flushToDB();
                         
-                        $this->printData($this->_new_file_data,['mode'=>'show']);
+                        $this->printData($this->_new_file_data,['mode'=>'show','']);
 
                     } 
                     
@@ -368,7 +370,7 @@ Class CSVClass extends CSVModel{
         
                     else{
         
-                        echo '<br><br><span class="danger-info">CSV Data is NOT identical to DB Data. Please, Update your Data</span>';
+                        echo '<hr><span class="danger-info"><h4>Crytical Error:</h4>CSV Data is NOT identical to DB Data. Please, Update your Data</span>';
                     }
         
                 }
@@ -388,27 +390,46 @@ Class CSVClass extends CSVModel{
                 $markup_rows[$check_pattern] = $this->printAttentions($check_pattern, $mode);
             }             
                       
-        }  
-       
-        /* Placing Reps rows into $reps_rows Array */
+        } 
+        
+        /**
+         * Check if $markup_rows Array contains any values
+         */
+        $markup_rows_values = false;
+        
+        foreach ($markup_rows as $markup_row){
 
-        foreach($markup_rows as $markup_key=>$markup_value){ 
-            
-            if(!empty($markup_value)){
+            if(!empty($markup_row)){
 
-                foreach($markup_value as  $item){                    
-
-                    $temp_rows = explode(',',$item);
-
-                    $all_markup_rows[$markup_key][] = $temp_rows;
-
-                }  
-                
+                $markup_rows_values = true;
             }
+
         }
+        
+        
+        if($markup_rows_values){
 
-        return $all_markup_rows;
+            /* Placing Reps rows into $reps_rows Array */
 
+            foreach($markup_rows as $markup_key=>$markup_value){ 
+                
+                if(!empty($markup_value)){
+
+                    foreach($markup_value as  $item){                    
+
+                        $temp_rows = explode(',',$item);
+
+                        $all_markup_rows[$markup_key][] = $temp_rows;
+
+                    }  
+                    
+                }
+            }
+
+            return $all_markup_rows;
+        }  
+
+       return [];
     }
 
 
@@ -472,6 +493,8 @@ Class CSVClass extends CSVModel{
         return substr($rep_string,0,strlen($rep_string)-3);
 
         }
+
+        return false;
 
                         
     }
@@ -656,7 +679,7 @@ Class CSVClass extends CSVModel{
 
                     if(isset($params['data'][$row_key]) && !empty($params['data'][$row_key])){                        
     
-                        $data[$row_key]['Update'] = '<form method="post" action="/data_checker.php?save=1&show_reps=0&update_id='.$row_key.'&promise=1"><input type="submit" class="btn btn-light" value="Update DB"/></form>';
+                        $data[$row_key]['Update'] = '<form method="post" action="/data_checker.php?save=1&show_reps=0&update_id='.$row_key.'&promise=1"><input type="submit" class="btn btn-warning" value="Update DB"/></form>';
                                             
                     }                  
                 }
