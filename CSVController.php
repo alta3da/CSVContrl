@@ -184,11 +184,8 @@ Class CSVClass extends CSVModel{
 
                             $rows_to_print = explode(',',substr($deleteFeedback['rows_log'],0,strlen($deleteFeedback['rows_log'])-1));
 
-                            foreach($rows_to_print as $row_to_print){
+                            $this->printDataRows($rows_to_print,$this->_init_file[$deleteFeedback['deleted_row']], ['row_num'=>$rows_to_print, 'row_style'=>'deleted', 'table_header'=>'common']);
 
-                                $this->printDataRow($this->_init_file[$deleteFeedback['deleted_row']], ['row_num'=>$row_to_print, 'row_style'=>'deleted']);
-                            }                            
-    
                             echo '<br><span class="info-info"><b>Optimized CSV file:</b></span> '.count($this->_file).' rows<br><br>';
                             
                         } 
@@ -389,6 +386,34 @@ Class CSVClass extends CSVModel{
 
         return $all_markup_rows;
 
+    }
+
+
+    private function printDataRows(array $rows_to_print, array $source_array, array $params){
+
+        echo '<pre>';
+        print_r($params);
+        echo'</pre>';
+
+        $row_count = 0;
+
+        foreach($rows_to_print as $row_to_print){
+
+            if(isset($params['table_header']) === 'common'){
+
+                if( $row_count === 0){
+
+                    $params['first_row'] =  $params['row_num']; 
+                }   
+                
+            } 
+            
+            $params['row_num'] =   $params['row_num'][$row_count];                     
+
+            $this->printDataRow($source_array, $params);
+            
+            $row_count++;
+        }  
     }
 
     private function printMarkupRowNum(string $pattern, array $markup_rows){
@@ -841,8 +866,11 @@ Class CSVClass extends CSVModel{
     }
 
 
-    private function printDataRow(array $data, array $params){
-              
+    private function printDataRow(array $data, array $params){  
+        
+        echo '<pre>';
+        print_r($params);
+        echo'</pre>';
 
         if($data){          
 
@@ -851,20 +879,30 @@ Class CSVClass extends CSVModel{
             /* Retrieving Table Head */
             echo '<tr>';
 
+
+
+            /**
+             * Printing Row table Header
+             */
+
             /* If exists - Add row_num to the Table */
-            echo (isset($params['row_num']))?'<td> № </td>':'';
+            if(isset($params['row_with_header']) === $params['row_num']){
 
+                echo (isset($params['row_num']))?'<td> № </td>':'';           
 
-            foreach($data as $key=>$value){             
+                foreach($data as $key=>$value){             
 
-                echo '<td>'.$key.'</td>';                
-                
-            }          
-            echo '</tr>';
+                    echo '<td>'.$key.'</td>';                
+                    
+                }          
+                echo '</tr>';
 
-
+            }
             
-            /** Applying Row style */
+            /** 
+             * Applying Row style 
+             */
+            
              if(isset($params['row_style'])){
 
                 switch($params['row_style']){
@@ -875,7 +913,8 @@ Class CSVClass extends CSVModel{
                 }
              }             
              
-             /* If exists - Add row_num to the Table */
+             /* If exists - Add row_num to the Table */           
+
             echo (isset($params['row_num']))?'<td>'.$params['row_num'].'</td>':'';
 
 
