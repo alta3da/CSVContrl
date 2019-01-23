@@ -184,20 +184,35 @@ Class CSVClass extends CSVModel{
 
                             $rows_to_print = explode(',',substr($deleteFeedback['rows_log'],0,strlen($deleteFeedback['rows_log'])-1));
 
+                            /**
+                             * Print deleted repeated row of CSV file
+                             */
+
                             $this->printDataRows($rows_to_print,$this->_init_file[$deleteFeedback['deleted_row']], ['row_num'=>$rows_to_print, 'row_style'=>'deleted', 'table_header'=>'common']);
 
                             echo '<br><span class="info-info"><b>Optimized CSV file:</b></span> '.count($this->_file).' rows<br><br>';
+
+                            /**
+                             * Get and Print markuped Pattern rows
+                             */
+
+                            $markup_rows = $this->getMarkupRows('off'); 
+                                                        
+                            $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows, 'patt_type'=>$check_pattern]);
                             
                         } 
 
                         else{
 
                             echo "<br><br><span class='success-info'><b>No repeated rows occured</b> OR had been deleted (if existed) in previous checks</span><br><br>";
+                        
+                            /**
+                             * Print Non-markuped Pattern rows
+                             */
+                            
+                            $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'no_rows_markup'=>true, 'patt_type'=>$check_pattern]);
                         }
 
-                        $markup_rows = $this->getMarkupRows('off'); 
-                                                        
-                        $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows, 'patt_type'=>$check_pattern]);
                     
                     }
                     
@@ -248,8 +263,7 @@ Class CSVClass extends CSVModel{
 
                 echo '<h4>New data List: ';
 
-                $this->printData($this->_new_file_data,['mode'=>'update', 'no_rows_markup'=>true, 'markup_rows'=>[]]);
-                //$this->printData($this->_new_file_data,['mode'=>'show','markup_rows'=>[]]);
+                $this->printData($this->_new_file_data,['mode'=>'update', 'no_rows_markup'=>true, 'markup_rows'=>[]]);                
 
                 echo '</h4>';
 
@@ -680,39 +694,9 @@ Class CSVClass extends CSVModel{
                     
                     if(!empty($rows_markup_array)){
 
-                        if($row_type = $this->checkRowMarkup($row_num,$rows_markup_array)) {
-                       
-                            /**
-                             * if printData func was called with params['no_rows_markup'] - no row markup applied
-                             */
-    
-                            if(isset($params['no_rows_markup']) && $params['no_rows_markup'] === true){$row_type['type'] = "default";}
-    
-                            switch($row_type['type']){
-    
-                                case "row_first_num":
-    
-                                 echo '<tr style="background:rgba(0,128,0,'.(0.3*$row_type['count']).');">';
-    
-                                 break;
-    
-                                 case "row_second_num":
-    
-                                 echo '<tr style="background:rgba(255,0,0,'.(0.3*$row_type['count']).');">';
-    
-                                 break;                             
-    
-                                 default:
-    
-                                 echo '<tr>';
-    
-                            }                                                              
-                        
-                        } 
+                        $this->printMarkupedRow($row_num, $rows_markup_array, $params);                        
                     }
 
-                    
-                    
 
                     /* Start rows number from 0 or 1 depending on $params['start'] */                 
                                         
@@ -742,9 +726,38 @@ Class CSVClass extends CSVModel{
         
     }
 
-    private function printMarkupedRow(){
+    private function printMarkupedRow(int $row_num, array $rows_markup_array, array $params){
 
+        if($row_type = $this->checkRowMarkup($row_num,$rows_markup_array)) {
+                       
+            /**
+             * if printData func was called with params['no_rows_markup'] - no row markup applied
+             */
+
+            if(isset($params['no_rows_markup']) && $params['no_rows_markup'] === true){$row_type['type'] = "default";}
+
+            switch($row_type['type']){
+
+                case "row_first_num":
+
+                 echo '<tr style="background:rgba(0,128,0,'.(0.3*$row_type['count']).');">';
+
+                 break;
+
+                 case "row_second_num":
+
+                 echo '<tr style="background:rgba(255,0,0,'.(0.3*$row_type['count']).');">';
+
+                 break;                             
+
+                 default:
+
+                 echo '<tr>';
+
+            }                                                             
         
+        } 
+
     }
 
     private function checkRowMarkup(int $row_num,array $rows_markup_array){
