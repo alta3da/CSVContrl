@@ -947,17 +947,131 @@ Class CSVClass extends CSVModel{
                                                    
                         }
     
-                        $perPattern_rows_count++;
-        
+                        $perPattern_rows_count++;        
                     }
-                }  
-    
+                }
             }
-
         }
+
+        echo '<pre>';
+        print_r($markup_rows_array);
+        echo '<pre>';
+
+        $markup_rows_array = $this->checkMixedRows($markup_rows_array);
+
+        echo '<pre>';
+        print_r($markup_rows_array);
+        echo '<pre>';
 
         return ($markup_rows_array)? $markup_rows_array:false;
 
+    }
+
+    private function checkMixedRows($markup_rows_array){
+
+        /**
+         * Check mixed type rows
+         */
+
+        $curr_scnd_nums = array();
+        $mixed_rows = array();
+
+        /**
+         * Get all first_num rows into Array
+         */
+
+        foreach($markup_rows_array as $key=>$markup_row_patt){            
+
+           if(isset($markup_row_patt['row_second_num']) && !empty($markup_row_patt['row_second_num'])){
+
+                foreach($markup_row_patt['row_second_num'] as $value){
+
+                    $curr_scnd_nums[] =$value;
+
+                }
+                           
+            }
+        }
+
+        if(isset($curr_scnd_nums) && !empty($curr_scnd_nums)) {
+
+            $curr_scnd_nums = array_unique($curr_scnd_nums);
+
+            /**
+             * Get all second_num rows where first_nums Array items are presented
+             */
+
+            foreach($markup_rows_array as $key=>$markup_row_patt){   
+                
+                echo '<br>checking f_n_pattern: '.$key;
+
+                if(isset($markup_row_patt['row_first_num']) && !empty($markup_row_patt['row_first_num'])){                
+
+                    foreach($markup_row_patt['row_first_num'] as $f_n_value){
+
+                        echo '<br>checking f_n_row: '.$f_n_value;
+    
+                        foreach($curr_scnd_nums as $s_n_key=>$s_n_value){
+
+                            if(in_array($s_n_value,$markup_row_patt['row_first_num'])){
+
+                                echo '<br>found scnd num row value: '.$s_n_value.' in first_num row value: '.$f_n_value;
+
+                                $s_n_to_mixed[] = $f_n_value;
+                            }                            
+                        }                    
+                    }
+                }
+            }
+        } 
+        
+        if(isset($s_n_to_mixed) && !empty($s_n_to_mixed)) {
+
+            $s_n_to_mixed = array_unique($s_n_to_mixed);
+
+            /**
+             * Unsetting first_num and second_num rows if ther are of mixed_type
+             * Setting mixed_row types in proper $markup_row_patt_key
+             */
+
+            foreach($markup_rows_array as $markup_row_patt_key=>$markup_row_patt){
+
+                foreach($markup_row_patt as $markup_row_type_key=>$row_item){
+
+                    foreach($row_item as $item_key=>$item){
+
+                        foreach($s_n_to_mixed as $s_n_item){
+
+                            if($s_n_item == $item){   
+                                
+                                /**
+                                 *  Unset first_num Array item if its mixed
+                                 */
+                                
+                                unset($markup_rows_array[$markup_row_patt_key][$markup_row_type_key][$item_key]);
+
+                                /**
+                                 *  Unset markup_row_type_key in Array it became empty
+                                 */
+
+                                if(empty($markup_rows_array[$markup_row_patt_key][$markup_row_type_key])){
+
+                                    unset($markup_rows_array[$markup_row_patt_key][$markup_row_type_key]);
+                                }
+
+                                $markup_rows_array[$markup_row_patt_key]['row_mixed'][] = $item;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        echo '<pre>';
+        print_r($markup_rows_array);
+        echo'</pre>';
+
+        return  $markup_rows_array;
     }
 
 
