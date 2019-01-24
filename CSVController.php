@@ -788,7 +788,13 @@ Class CSVClass extends CSVModel{
 
                  echo '<tr style="background:rgba(255,0,0,'.(0.3*$row_type['count']).');">';
 
-                 break;                             
+                 break;
+                 
+                 case "row_mixed":
+
+                 echo '<tr style="background:rgba(70,130,180,'.(0.3*$row_type['count']).');">';
+
+                 break; 
 
                  default:
 
@@ -801,6 +807,10 @@ Class CSVClass extends CSVModel{
     }
 
     private function checkRowMarkup(int $row_num,array $rows_markup_array){
+
+        // echo'<pre>';
+        // print_r($rows_markup_array);
+        // echo'</pre>';
 
         $row_type = array();
 
@@ -816,15 +826,13 @@ Class CSVClass extends CSVModel{
 
                         $type_count++;                        
 
-                        $row_type=['type'=>$rows_markup_type, 'count'=>$type_count];
-                       
+                        $row_type=['type'=>$rows_markup_type, 'count'=>$type_count];                    
                     }
-                }
-            }
+                }                    
+            }                      
         }
 
-        return $row_type;
-       
+        return $row_type;       
     }
 
 
@@ -893,14 +901,9 @@ Class CSVClass extends CSVModel{
 
     private function getRowsMarkupArray(array $data,array $markup_row_keys){       
 
-        $row_nums = array_keys($data);  
-
-        // echo '<pre>';
-        // print_r($markup_row_keys);
-        // echo'</pre>';
+        $row_nums = array_keys($data); 
         
-
-        $markup_row = array();
+        $markup_rows_array = array();
 
         foreach($row_nums as $row_num){
 
@@ -923,7 +926,7 @@ Class CSVClass extends CSVModel{
         
                                 //echo '<br>Check $row_num: '.$row_num.' with : '.$item.' :: MARK FIRST ROW';
         
-                                $markup_row[$patt_key]['row_first_num'][] = $row_num;                           
+                                $markup_rows_array[$patt_key]['row_first_num'][] = $row_num;                           
         
                             } 
                             
@@ -931,7 +934,7 @@ Class CSVClass extends CSVModel{
     
                                // echo '<br>Check $row_num: '.$row_num.' with : '.$item.' :: ELSE ROW';
                             
-                               $markup_row[$patt_key]['row_second_num'][] = $row_num;  
+                               $markup_rows_array[$patt_key]['row_second_num'][] = $row_num;  
                             }                            
                                                    
                         }
@@ -944,9 +947,79 @@ Class CSVClass extends CSVModel{
             }
 
         }
-                     
+
+
+        /**
+         * Check mixed type rows
+         */
+
+         foreach($markup_rows_array as $key=>$markup_row_patt){
+
+            $curr_first_nums = array();
+
+            $mixed_rows = array();
+
+           if(isset($markup_row_patt['row_first_num']) && !empty($markup_row_patt['row_first_num'])){
+
+                $curr_first_nums = $markup_row_patt['row_first_num'];
+
+                foreach($markup_rows_array as $key=>$markup_row_patt){
+
+                    if(isset($markup_row_patt['row_second_num']) && !empty($markup_row_patt['row_second_num'])){
+
+                        foreach($curr_first_nums as $first_num_item){
         
-        return ($markup_row)? $markup_row:false;
+                            if(in_array($first_num_item, $markup_row_patt['row_second_num'])){       
+                            
+                                $mixed_rows[] = $first_num_item;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * Unsetting first_num and second_num rows if ther are of mixed_type
+         * Setting mixed_row types in proper $markup_row_patt_key
+         */
+
+        foreach($markup_rows_array as $markup_row_patt_key=>$markup_row_patt){
+
+            foreach($markup_row_patt as $markup_row_type_key=>$row_item){
+
+                foreach($row_item as $item_key=>$item){
+
+                    foreach($curr_first_nums as $first_num_item){
+
+                        if($first_num_item == $item){   
+                            
+                            /**
+                             *  Unset first_num Array item if its mixed
+                             */
+                            
+                            unset($markup_rows_array[$markup_row_patt_key][$markup_row_type_key][$item_key]);
+
+                             /**
+                             *  Unset markup_row_type_key in Array it became empty
+                             */
+
+                            if(empty($markup_rows_array[$markup_row_patt_key][$markup_row_type_key])){
+
+                                unset($markup_rows_array[$markup_row_patt_key][$markup_row_type_key]);
+                            }
+
+                            $markup_rows_array[$markup_row_patt_key]['row_mixed'][] = $item;
+                        }
+                    }
+
+                }
+
+            }
+
+        }
+
+        return ($markup_rows_array)? $markup_rows_array:false;
 
     }
 
