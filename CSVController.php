@@ -15,6 +15,8 @@ if(isset($_GET['slug'])){
 
 Class CSVClass extends CSVModel{
 
+    private $_file_url = "/data/test.csv";
+
     private $_init_file = array();
 
     private $_file = array();
@@ -67,13 +69,13 @@ Class CSVClass extends CSVModel{
          * Set $_GET Data to $this->_opt
          */
         
-        $this->setOptsFromGET();
-
+        $this->setOptsFromGET(); 
+        
         /**
          * Load CSV file Data into $this->_file
          */
 
-        $this->readCSVfile();
+        $this->readCSVfile($this->_file_url);
 
         /**
          * Copy initial CSV file Data into $this->_init_file
@@ -95,11 +97,26 @@ Class CSVClass extends CSVModel{
 
     }
 
-    public function processCSVFile(){   
+    public function checkFileLoaded(){
 
-                
-        echo '<span class="info-info"><h3><b>Prosessing CSV file to DB table ::</b></h3></span>';
-        
+        return ($this->_file)? true : false;
+    }
+
+    public function processCSVFile(){  
+
+        /**
+         * Die process if CSV File no found
+         */
+
+       if (!$this->checkFileLoaded()) {       
+
+        echo '<h4><span class="danger-info">Crytical Error: File load failure. Check path: .'.$this->_file_url.'</span></h4>';
+           
+        return;
+
+        };      
+
+              
         /**
          * Save to DB without Checks
          */
@@ -1160,33 +1177,45 @@ Class CSVClass extends CSVModel{
 
     }
 
-    private function readCSVfile(){
+    private function readCSVfile(string $url){
 
         $row = 0;
 
-        if (($handle = fopen($_SERVER['DOCUMENT_ROOT']."/data/test.csv", "r")) !== FALSE) {
+        if(file_exists ($_SERVER['DOCUMENT_ROOT'].$url)){
+
+            $handle = fopen($_SERVER['DOCUMENT_ROOT'].$url, "r");
+
+            if($handle){
             
-            while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {                
-                
-                $row++;
-
-                for ($i=0; $i < count($data); $i++) {
-
-                    if($row == 1){
-
-                        $this->_fields[$i] = $data[$i];                        
-                    } 
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {                
                     
-                    else{
-
-                        $this->_file[$row-2][$this->_fields[$i]] = $data[$i];
+                    $row++;
+    
+                    for ($i=0; $i < count($data); $i++) {
+    
+                        if($row == 1){
+    
+                            $this->_fields[$i] = $data[$i];                        
+                        } 
+                        
+                        else{
+    
+                            $this->_file[$row-2][$this->_fields[$i]] = $data[$i];
+                        }
+                        
                     }
-                    
                 }
-            }
-            fclose($handle);
 
-        } 
+                fclose($handle);
+    
+            } 
+
+        }
+
+        else{
+
+            return false;
+        }
 
     }
 
