@@ -150,23 +150,20 @@ Class CSVClass extends CSVModel{
                 
             if(isset($this->_opt['show_reps']) && $this->_opt['show_reps'] == 1){                
                 
+                if($markup_rows = $this->getMarkupRows()){
 
-                $markup_rows = $this->getMarkupRows();
-
-                if(!$markup_rows){
+                    
 
                     foreach($markup_rows as $markup_pattern_key=>$value){
 
                         $this->printPatternAttentions($markup_pattern_key);
                     }                    
                 } 
-                
                 else{
 
-                    echo '<br/><span class="success-info"> No '.$pattern.' pattern repeats found</span><hr>';
-                   
+                    echo '<br/><span class="success-info"> No repeating rows found in CSV file!</span><hr>';
                 }
-                                
+                                                
                 $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows]);
                 
             }
@@ -800,7 +797,7 @@ Class CSVClass extends CSVModel{
                  
                  case "row_mixed":
 
-                 echo '<tr style="background:rgba(70,130,180,'.(0.3*$row_type['count']).');">';
+                 echo '<tr style="background:rgba(255,127,80,'.(0.3*$row_type['count']).');">';
 
                  break; 
 
@@ -1369,7 +1366,12 @@ Class CSVClass extends CSVModel{
                 
             }
             
-        }      
+        }
+        
+        else{
+
+            return false;
+        }
 
     }
 
