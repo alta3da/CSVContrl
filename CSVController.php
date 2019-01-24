@@ -1320,7 +1320,7 @@ Class CSVClass extends CSVModel{
 
         else{
 
-            echo ($mode === 'show')?'<br/><span class="success-info"> No '.$pattern.' pattern repeats found</span><hr>':'';
+            return false; echo ($mode === 'show')?'<br/><span class="success-info"> No '.$pattern.' pattern repeats found</span><hr>':'';
 
         }          
                
