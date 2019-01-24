@@ -148,11 +148,24 @@ Class CSVClass extends CSVModel{
         
         if(!isset($this->_opt['promise'])){
                 
-            if(isset($this->_opt['show_reps']) && $this->_opt['show_reps'] == 1){ 
+            if(isset($this->_opt['show_reps']) && $this->_opt['show_reps'] == 1){                
                 
-                /**  getMarkupRows "show" argument tells that repeats attention warning MUST be shown*/
 
-                $markup_rows = $this->getMarkupRows('show');  
+                $markup_rows = $this->getMarkupRows();
+
+                if(!$markup_rows){
+
+                    foreach($markup_rows as $markup_pattern_key=>$value){
+
+                        $this->printPatternAttentions($markup_pattern_key);
+                    }                    
+                } 
+                
+                else{
+
+                    echo '<br/><span class="success-info"> No '.$pattern.' pattern repeats found</span><hr>';
+                   
+                }
                                 
                 $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows]);
                 
@@ -168,15 +181,9 @@ Class CSVClass extends CSVModel{
             
             if(!isset($this->_opt['promise'])){
 
-                echo '<br><br><span class="info-info"><b>Initial CSV file:</b></span> '.count($this->_file).' rows';
+                echo '<br><br><span class="info-info"><b>Initial CSV file:</b></span> '.count($this->_file).' rows';                
 
-                /**  getMarkupRows "off" argument tells that NO repeats attention warning must be shown*/
-
-                $markup_rows = $this->getMarkupRows('off');
-
-                // echo '<pre>';
-                // print_r($markup_rows);
-                // echo '</pre>';
+                $markup_rows = $this->getMarkupRows();
                
                 $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows]);
 
@@ -215,7 +222,7 @@ Class CSVClass extends CSVModel{
                              * Get and Print markuped Pattern rows
                              */
 
-                            $markup_rows = $this->getMarkupRows('off'); 
+                            $markup_rows = $this->getMarkupRows(); 
                                                         
                             $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows, 'patt_type'=>$check_pattern]);
                             
@@ -345,7 +352,7 @@ Class CSVClass extends CSVModel{
                     echo '<span class="warning-info"><h4>DB Update Required!</h4></span>';
                 }  
                                                
-                $this->printData($this->_old_file_data,['mode'=>'update', 'data'=>$nonidents_array, 'no_rows_markup'=>true, 'markup_rows'=>$this->getMarkupRows('off')]);
+                $this->printData($this->_old_file_data,['mode'=>'update', 'data'=>$nonidents_array, 'no_rows_markup'=>true, 'markup_rows'=>$this->getMarkupRows()]);
 
             }
    
@@ -398,13 +405,14 @@ Class CSVClass extends CSVModel{
         
     }
 
-    private function getMarkupRows($mode){         
+    private function getMarkupRows(){         
         
         foreach($this->_checks_array as $check_pattern){
 
             if(!empty($check_pattern)){
 
-                $markup_rows[$check_pattern] = $this->printAttentions($check_pattern, $mode);
+                $markup_rows[$check_pattern] = $this->getAttentions($check_pattern);
+                
             }             
                       
         } 
@@ -483,7 +491,7 @@ Class CSVClass extends CSVModel{
 
         $rep_string="";        
 
-        $markup_rows = $this->getMarkupRows('off');
+        $markup_rows = $this->getMarkupRows();
 
         if(array_key_exists($pattern,$markup_rows)){
 
@@ -1308,58 +1316,60 @@ Class CSVClass extends CSVModel{
         echo json_encode($response);
     } 
 
-    private function printAttentions($pattern, $mode){ 
+    private function getAttentions($pattern){ 
         
         $count_patterns = $this->getCountPatterns($pattern);
         
         if(!empty($count_patterns)){
 
-            return $this->printAttentionsRow($pattern, $count_patterns, $mode);
+            return $this->getAttentionsRow($pattern, $count_patterns);
 
         }
-
-        else{
-
-            return false; echo ($mode === 'show')?'<br/><span class="success-info"> No '.$pattern.' pattern repeats found</span><hr>':'';
-
-        }          
-               
+        
+        return false;
+             
     }
 
-
-    private function printAttentionsRow(string $pattern, array $count_patterns, string $show_mode){
+    private function getAttentionsRow(string $pattern, array $count_patterns){
 
         $reps_rows = array(); 
 
+        foreach($count_patterns as $row){                
 
-            echo($show_mode === 'show')?'<br><span class="warning-info"><h3>ATTENTION!</h3></span>':'';
+            $row['rows'] = str_replace(",,","",$row['rows']);
+                                                  
+            if(isset($row['rows']) && !empty($row['rows'])){                
+            
+                $reps_rows[] = $row['rows'];
 
+            }
+        }       
+               
+        return $reps_rows;
+    }
+
+
+    private function printPatternAttentions(string $pattern){
+
+        $reps_rows = array(); 
+
+        $count_patterns = $this->getCountPatterns($pattern);
+
+        echo '<br><span class="warning-info"><h3>ATTENTION!</h3></span>';
+        
+        if(!empty($count_patterns)){
 
             foreach($count_patterns as $row){                
 
                 $row['rows'] = str_replace(",,","",$row['rows']);
-
-                /**
-                 * If $mode == show - display ATTENTIONS warning
-                 */
-
-                if($show_mode === 'show'){
-                    
-                    echo '<br><b><span class="warning-info">'.$row['count'].' Repeating pattern " '.$pattern.' " ('.$row['pattern'].') found at CSV rows: '.$row['rows'].' </b>(Rows '.$this->getCSVRows($row['rows']).' in CSV file)</span>';
-                    echo '<br><br><span class="danger-info">Must be deleted '.($row['count']-1).' row(s): '.substr($row['rows'],2, strlen($row['rows'])).'</span><br><br>';
-                                    
-                }                              
+    
+                echo '<br><b><span class="warning-info">'.$row['count'].' Repeating pattern " '.$pattern.' " ('.$row['pattern'].') found at CSV rows: '.$row['rows'].' </b>(Rows '.$this->getCSVRows($row['rows']).' in CSV file)</span>';
+                echo '<br><br><span class="danger-info">Must be deleted '.($row['count']-1).' row(s): '.substr($row['rows'],2, strlen($row['rows'])).'</span><br><br>';
+                echo'<hr>';                        
                 
-                if(isset($row['rows']) && !empty($row['rows'])){                
-                
-                    $reps_rows[] = $row['rows'];
-
-                }
             }
             
-            echo($show_mode === 'show')?'<hr>':'';
-            
-            return $reps_rows;
+        }      
 
     }
 
