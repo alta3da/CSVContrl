@@ -150,19 +150,22 @@ Class CSVClass extends CSVModel{
                 
             if(isset($this->_opt['show_reps']) && $this->_opt['show_reps'] == 1){                
                 
-                if($markup_rows = $this->getMarkupRows()){
-
-                    
+                if($markup_rows = $this->getMarkupRows()){                    
 
                     foreach($markup_rows as $markup_pattern_key=>$value){
 
-                        $this->printPatternAttentions($markup_pattern_key);
+                        if(!$this->printPatternAttentions($markup_pattern_key)){
+
+                            echo '<hr><h4><span class="success-info"> No repeating rows found in CSV file in '.$markup_pattern_key.' pattern</h4><hr>';
+                        }
                     }                    
-                } 
+                }
+                
                 else{
 
-                    echo '<br/><span class="success-info"> No repeating rows found in CSV file!</span><hr>';
+                    echo '<h4><span class="success-info"> No repeating rows found in CSV file in ANY pattern</span></h4>';
                 }
+                
                                                 
                 $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows]);
                 
@@ -953,77 +956,6 @@ Class CSVClass extends CSVModel{
 
         }
 
-
-        /**
-         * Check mixed type rows
-         */
-
-         foreach($markup_rows_array as $key=>$markup_row_patt){
-
-            $curr_first_nums = array();
-
-            $mixed_rows = array();
-
-           if(isset($markup_row_patt['row_first_num']) && !empty($markup_row_patt['row_first_num'])){
-
-                $curr_first_nums = $markup_row_patt['row_first_num'];
-
-                foreach($markup_rows_array as $key=>$markup_row_patt){
-
-                    if(isset($markup_row_patt['row_second_num']) && !empty($markup_row_patt['row_second_num'])){
-
-                        foreach($curr_first_nums as $first_num_item){
-        
-                            if(in_array($first_num_item, $markup_row_patt['row_second_num'])){       
-                            
-                                $mixed_rows[] = $first_num_item;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        /**
-         * Unsetting first_num and second_num rows if ther are of mixed_type
-         * Setting mixed_row types in proper $markup_row_patt_key
-         */
-
-        foreach($markup_rows_array as $markup_row_patt_key=>$markup_row_patt){
-
-            foreach($markup_row_patt as $markup_row_type_key=>$row_item){
-
-                foreach($row_item as $item_key=>$item){
-
-                    foreach($curr_first_nums as $first_num_item){
-
-                        if($first_num_item == $item){   
-                            
-                            /**
-                             *  Unset first_num Array item if its mixed
-                             */
-                            
-                            unset($markup_rows_array[$markup_row_patt_key][$markup_row_type_key][$item_key]);
-
-                             /**
-                             *  Unset markup_row_type_key in Array it became empty
-                             */
-
-                            if(empty($markup_rows_array[$markup_row_patt_key][$markup_row_type_key])){
-
-                                unset($markup_rows_array[$markup_row_patt_key][$markup_row_type_key]);
-                            }
-
-                            $markup_rows_array[$markup_row_patt_key]['row_mixed'][] = $item;
-                        }
-                    }
-
-                }
-
-            }
-
-        }
-
         return ($markup_rows_array)? $markup_rows_array:false;
 
     }
@@ -1356,13 +1288,21 @@ Class CSVClass extends CSVModel{
         
         if(!empty($count_patterns)){
 
-            foreach($count_patterns as $row){                
+            foreach($count_patterns as $row){
+                
+                if(isset($row) && !empty($row)){
 
                 $row['rows'] = str_replace(",,","",$row['rows']);
     
                 echo '<br><b><span class="warning-info">'.$row['count'].' Repeating pattern " '.$pattern.' " ('.$row['pattern'].') found at CSV rows: '.$row['rows'].' </b>(Rows '.$this->getCSVRows($row['rows']).' in CSV file)</span>';
                 echo '<br><br><span class="danger-info">Must be deleted '.($row['count']-1).' row(s): '.substr($row['rows'],2, strlen($row['rows'])).'</span><br><br>';
-                echo'<hr>';                        
+                echo'<hr>'; 
+                
+                return true;
+                
+                }
+
+                return false;
                 
             }
             
