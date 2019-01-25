@@ -543,11 +543,19 @@ class CSVClass{
 
         $nonidents_array = $this->checkArraysOnIdentity($this->_db_data,$this->_file);
 
-        echo '<hr><span class="warning-info">First non-identical row in DB: </span>'; 
+        echo '<hr><span class="warning-info">Last identical row in DB: </span>'; 
+
+        /**
+         * Print last CSV-DB identical row
+         */
         
         if(!empty($nonidents_array)){
 
-            $this->printFirstNonIdentRow($nonidents_array);                        
+            $nonident_row_id = $this->getFirstNonIdentRow($nonidents_array); 
+
+            $last_ident_row = $this->getLastIdenticalRowData($this->getLastIdenticalRowNum($nonident_row_id));          
+            
+            if($last_ident_row) $this->printDataRow( $last_ident_row, ['row_style'=>'replace','first_row'=>0,'row_num'=>0]);                              
 
         }
         else{
@@ -560,6 +568,41 @@ class CSVClass{
         echo '<br><br><a href="/data_checker.php" class="btn btn-primary"> Back to Start </a>';
        
 
+    }
+
+    private function getLastIdenticalRowData(int $last_row_num){
+
+        $row_count = 0;
+
+        foreach($this->_db_data as $db_row){
+
+            if($row_count == $last_row_num){
+
+                return $db_row;
+            }
+
+            $row_count++;
+        }
+
+    }
+
+    private function getLastIdenticalRowNum(int $nonident_row_id){
+
+        $row_count = 0;
+            
+        foreach($this->_db_data as $db_row){
+
+            if($db_row['id'] == $nonident_row_id){
+
+                $last_row_id = $row_count-1;
+
+                return  $last_row_id;
+            }
+
+            $row_count++;
+        }
+
+        return false;
     }
 
     private function preUpdateRequirements(){
@@ -648,11 +691,12 @@ class CSVClass{
         return;
     }
 
-    private function printFirstNonIdentRow($nonidents_array){
+    private function getFirstNonIdentRow($nonidents_array){
 
-        $tmp = array_shift($nonidents_array);             
-                            
-            $this->printDataRow( $tmp, ['row_style'=>'deleted','first_row'=>0,'row_num'=>0]);
+        $tmp = array_shift($nonidents_array); 
+        
+       return $tmp['id'];                            
+        
     }
 
     
@@ -951,9 +995,9 @@ class CSVClass{
             }
         }
 
-        echo '<pre>';
-        print_r($markup_rows_array);
-        echo '<pre>';
+        // echo '<pre>';
+        // print_r($markup_rows_array);
+        // echo '<pre>';
 
         /**
          * Check if $markup_rows_array contains mixed_rows
@@ -964,9 +1008,9 @@ class CSVClass{
 
         if($markup_with_mixed_array) $markup_rows_array = $this->checkMixedRows($markup_rows_array);
 
-        echo '<pre>';
-        print_r($markup_rows_array);
-        echo '<pre>';
+        // echo '<pre>';
+        // print_r($markup_rows_array);
+        // echo '<pre>';
 
         return ($markup_rows_array)? $markup_rows_array:false;
 
@@ -1008,19 +1052,19 @@ class CSVClass{
 
             foreach($markup_rows_array as $key=>$markup_row_patt){   
                 
-                echo '<br>checking f_n_pattern: '.$key;
+                //echo '<br>checking f_n_pattern: '.$key;
 
                 if(isset($markup_row_patt['row_first_num']) && !empty($markup_row_patt['row_first_num'])){                
 
                     foreach($markup_row_patt['row_first_num'] as $f_n_value){
 
-                        echo '<br>checking f_n_row: '.$f_n_value;
+                        //echo '<br>checking f_n_row: '.$f_n_value;
     
                         foreach($curr_scnd_nums as $s_n_key=>$s_n_value){
 
                             if(in_array($s_n_value,$markup_row_patt['row_first_num'])){
 
-                                echo '<br>found scnd num row value: '.$s_n_value.' in first_num row value: '.$f_n_value;
+                                //echo '<br>found scnd num row value: '.$s_n_value.' in first_num row value: '.$f_n_value;
 
                                 $s_n_to_mixed[] = $f_n_value;
                             }                            
