@@ -3,17 +3,33 @@
 require_once($_SERVER['DOCUMENT_ROOT'].'/models/CSVModel.php');
 
 
-
 if(isset($_GET['slug'])){
+    
+   // echo 'Slug set';
 
-    $csv = new CSVCLass;
+    $csv = new CSVClass;   
 
     $csv->getCityData($_GET['slug']);
 
 }
 
+// class test{
 
-Class CSVClass extends CSVModel{
+//     function __construct(){ 
+
+        
+//     }
+
+//     function test(){
+
+//         echo '<br>test';
+//     }
+
+    
+// }
+
+
+class CSVClass{
 
     private $_file_url = "/data/test.csv";
 
@@ -37,12 +53,11 @@ Class CSVClass extends CSVModel{
 
     private $_check_patterns = array();
 
-
     private $_opt = array();
 
     private $_db;
 
-    function __construct(){ 
+    function __construct(){       
         
         /**
          * Set Pattern checks into $checks_array::
