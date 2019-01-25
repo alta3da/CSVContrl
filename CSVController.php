@@ -383,17 +383,29 @@ class CSVClass{
 
                 if(!isset($this->_opt['promise'])){
 
+                    echo '<hr><h4><span class="info-info">Final check::</span></h4>';
+                   
                     $final_check_array = $this->runConsistencyCheck();
 
-                    if(empty($final_check_array)){
-        
-                        echo '<hr><h4><span class="success-info">Final check:CSV Data is absolutely identical to DB</span></h4>';
-                    }
-        
+                    if($final_check_array === false){
+
+                        echo '<h4><span class="warning-info">No DB Data found</span></h4>';
+                    } 
+
                     else{
-        
-                        echo '<hr><span class="danger-info"><h4>Crytical Error:</h4>CSV Data is NOT identical to DB Data. Please, Update your Data</span>';
+                        
+                        if(empty($final_check_array)){
+            
+                            echo '<hr><h4><span class="success-info">Final check:CSV Data is absolutely identical to DB</span></h4>';
+                        }
+            
+                        else{
+            
+                            echo '<hr><span class="danger-info"><h4>Crytical Error:</h4>CSV Data is NOT identical to DB Data. Please, Update your Data</span>';
+                        }
                     }
+
+                    
         
                 }
 
@@ -638,10 +650,21 @@ class CSVClass{
     private function runConsistencyCheck(){
 
         $this->_db_data = $this->_db->getDBData();
-                        
-        $final_check_array = $this->checkArraysOnIdentity($this->_file, $this->_db_data);  
         
-        return $final_check_array;    
+        /**
+         * Return false if no Db Data found (nothing to compare with CSV Data)
+         */
+        
+        if(empty( $this->_db_data)) return false;
+
+        /**
+         * Return $final_check_array 
+         */
+
+        $final_check_array = $this->checkArraysOnIdentity($this->_file, $this->_db_data);  
+    
+        return $final_check_array; 
+               
                 
     }
 
