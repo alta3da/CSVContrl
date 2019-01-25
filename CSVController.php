@@ -3,30 +3,13 @@
 require_once($_SERVER['DOCUMENT_ROOT'].'/models/CSVModel.php');
 
 
-if(isset($_GET['slug'])){
-    
-   // echo 'Slug set';
-
+if(isset($_GET['slug'])){   
+ 
     $csv = new CSVClass;   
 
-    $csv->getCityData($_GET['slug']);
+    $csv->getCityFromDB($_GET['slug']);
 
 }
-
-// class test{
-
-//     function __construct(){ 
-
-        
-//     }
-
-//     function test(){
-
-//         echo '<br>test';
-//     }
-
-    
-// }
 
 
 class CSVClass{
@@ -1373,7 +1356,7 @@ class CSVClass{
 
     }
 
-    public function getCityData($slug){
+    public function getCityFromCSV($slug){
 
         $response = array();
 
@@ -1388,6 +1371,24 @@ class CSVClass{
 
         echo json_encode($response);
     } 
+
+
+    public function getCityFromDB($slug){
+
+        $response = array();
+
+        foreach($this->_file as $row){
+
+            if($row['city'] == $slug){
+
+                $response[] = $row;
+
+            }
+        }
+
+        echo json_encode($response);
+    }
+
 
     private function getAttentions($pattern){ 
         
