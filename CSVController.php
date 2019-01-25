@@ -1365,7 +1365,6 @@ class CSVClass{
             if($row['city'] == $slug){
 
                 $response[] = $row;
-
             }
         }
 
@@ -1375,16 +1374,9 @@ class CSVClass{
 
     public function getCityFromDB($slug){
 
-        $response = array();
+        $response = array();       
 
-        foreach($this->_file as $row){
-
-            if($row['city'] == $slug){
-
-                $response[] = $row;
-
-            }
-        }
+        $response = $this->_db->getPointsByName($slug);      
 
         echo json_encode($response);
     }
