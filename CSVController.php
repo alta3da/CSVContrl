@@ -3,17 +3,20 @@
 require_once($_SERVER['DOCUMENT_ROOT'].'/models/CSVModel.php');
 
 
-
 if(isset($_GET['slug'])){
-
-    $csv = new CSVCLass;
-
-    $csv->getCityData($_GET['slug']);
+   
+    $csv = new CSVClass;    
+    
+    $csv->getCityFromDB($_GET['slug']);
 
 }
 
 
-Class CSVClass extends CSVModel{
+class CSVClass{
+
+    private $_file_url = "/data/test.csv";
+
+    private $_init_file = array();
 
     private $_file = array();
 
@@ -33,12 +36,11 @@ Class CSVClass extends CSVModel{
 
     private $_check_patterns = array();
 
-
     private $_opt = array();
 
     private $_db;
 
-    function __construct(){ 
+    function __construct(){       
         
         /**
          * Set Pattern checks into $checks_array::
@@ -65,13 +67,19 @@ Class CSVClass extends CSVModel{
          * Set $_GET Data to $this->_opt
          */
         
-        $this->setOptsFromGET();
-
+        $this->setOptsFromGET();        
+        
         /**
          * Load CSV file Data into $this->_file
          */
 
-        $this->readCSVfile();
+        $this->readCsvFile($this->_file_url);
+
+        /**
+         * Copy initial CSV file Data into $this->_init_file
+         */
+
+        $this->_init_file = $this->_file;
 
         /**
          * Initialize DB Class
@@ -81,16 +89,33 @@ Class CSVClass extends CSVModel{
        
     }
 
+
     public function getOpts(){
 
         return $this->_opt;
 
     }
 
-    public function processCSVFile(){   
-        
-        echo '<span class="info-info"><h3>Prosessing CSV file to DB table</h3></span>';
-        
+    public function checkFileLoaded(){
+
+        return ($this->_file)? true : false;
+    }
+
+    public function processCSVFile(){  
+
+        /**
+         * Die process if CSV File no found
+         */
+
+       if (!$this->checkFileLoaded()) {       
+
+        echo '<h4><span class="danger-info">Crytical Error: File load failure. Check path: .'.$this->_file_url.'</span></h4>';
+           
+        return;
+
+        };      
+
+              
         /**
          * Save to DB without Checks
          */
@@ -111,34 +136,37 @@ Class CSVClass extends CSVModel{
         
         foreach($this->_checks_array as $check_pattern){
 
-            $coinsidence_patterns[$check_pattern] = $this->findDataRepeats($this->_file, $check_pattern);
+            $coinsidence_patterns[$check_pattern] = $this->findDataRepeats($this->_file, $check_pattern);         
 
-           
-
-            // if(!$coinsidence_patterns[$check_pattern]) {
-                
-            //     echo '<span class="danger-info"><br><br><h3>Can\'t create Compare Pattern to check Data!</h3> <br>Check out $this->_check_patterns Keys corresponds CSV Column Keys</span>';
-                
-            //     return;
-            // }
         } 
              
         
         /**
          * Show Repeats Initial log
-         */
-
+         */        
+        
         if(!isset($this->_opt['promise'])){
                 
             if(isset($this->_opt['show_reps']) && $this->_opt['show_reps'] == 1){                
+                
+                if($markup_rows = $this->getMarkupRows()){                    
 
-                foreach($this->_checks_array as $check_pattern){
+                    foreach($markup_rows as $markup_pattern_key=>$value){
 
-                    $coinsidence_patterns[$check_pattern] = $this->printAttentions($check_pattern);
-                    
+                        if(!$this->printPatternAttentions($markup_pattern_key)){
+
+                            echo '<hr><h4><span class="success-info"> No repeating rows found in CSV file in '.$markup_pattern_key.' pattern</h4><hr>';
+                        }
+                    }                    
                 }
+                
+                else{
 
-                $this->printData($this->_file,['mode'=>'show', 'start'=>0]);
+                    echo '<h4><span class="success-info"> No repeating rows found in CSV file in ANY pattern</span></h4>';
+                }
+                
+                                                
+                $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows]);
                 
             }
         }
@@ -147,36 +175,69 @@ Class CSVClass extends CSVModel{
         /**
          * Process CSV to DB Data
          */
-        
+               
         if(isset($this->_opt['save']) && $this->_opt['save'] == 1){ 
             
             if(!isset($this->_opt['promise'])){
 
-                echo '<br><br><span class="info-info">Initial CSV file:</span> '.count($this->_file).' rows';
+                echo '<br><br><span class="info-info"><b>Initial CSV file:</b></span> '.count($this->_file).' rows';                
 
-                $this->printData($this->_file,['mode'=>'show']);
+                $markup_rows = $this->getMarkupRows();
+               
+                $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows]);
 
             }
 
-            foreach($this->_checks_array as $check_pattern){              
-              
-                $deleteFeedback = $this->deleteNonUniqueData($coinsidence_patterns[$check_pattern], $check_pattern);
+            foreach($this->_checks_array as $check_pattern){ 
+                              
+                $deleteFeedback = $this->deleteNonUniqueData($coinsidence_patterns[$check_pattern], $check_pattern);                
 
                 if(!isset($this->_opt['promise'])){
 
                     if($deleteFeedback){
         
-                        echo '<br><br><span class="warning-info"><b>Checking Pattern "'.$deleteFeedback['c_pattern'].'"</b> :: unset: '.$deleteFeedback['rows_deleted']. ' rows: '.substr($deleteFeedback['rows_log'],0,strlen($deleteFeedback['rows_log'])-1).'</span>';
+                        echo '<hr><h3><span class="warning-info">Checking Pattern "'.$deleteFeedback['c_pattern'].'"</h3></span>';
+
+                        $markup_row_num = $this->printMarkupRowNum($check_pattern, $markup_rows);
+
+                        echo ($markup_row_num)?'<span class="info-info"><b>Initially detected</b> repeated rows: '.$markup_row_num.'</span>':'';
                         
             
-                        if($deleteFeedback['rows_deleted']){
-            
-                            $this->printData($this->_file,['mode'=>'show']);
+                        if($deleteFeedback['rows_deleted']){                           
+                            
+                            echo '<br><br><span class="warning-info"><b>Currently deleted pattern(s):</b> '.$deleteFeedback['compared_row'].' :</span>:: <span class="danger-info"><b>unset: '.$deleteFeedback['rows_deleted']. ' row(s) : rows №: '.substr($deleteFeedback['rows_log'],0,strlen($deleteFeedback['rows_log'])-1).'</b></span><br><br>';
 
-                            echo '<br><span class="warning-info"><b>Deleted pattern:</b> '.$deleteFeedback['compared_row'].' :</span> at row №: '.$deleteFeedback['row_count'];
-    
-                            echo '<br><span class="info-info">Optimized CSV file:</span> '.count($this->_file).' rows';
+                            $rows_to_print = explode(',',substr($deleteFeedback['rows_log'],0,strlen($deleteFeedback['rows_log'])-1));
+
+                            /**
+                             * Print deleted repeated row of CSV file
+                             */
+
+                            $this->printDataRows($rows_to_print,$this->_init_file[$deleteFeedback['deleted_row']], ['row_num'=>$rows_to_print, 'row_style'=>'deleted', 'table_header'=>'common']);
+
+                            echo '<br><span class="info-info"><b>Optimized CSV file:</b></span> '.count($this->_file).' rows<br><br>';
+
+                            /**
+                             * Get and Print markuped Pattern rows
+                             */
+
+                            $markup_rows = $this->getMarkupRows(); 
+                                                        
+                            $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'markup_rows'=>$markup_rows, 'patt_type'=>$check_pattern]);
+                            
                         } 
+
+                        else{
+
+                            echo "<br><br><span class='success-info'><b>No repeated rows occured</b> OR had been deleted (if existed) in previous checks</span><br><br>";
+                        
+                            /**
+                             * Print Non-markuped Pattern rows
+                             */
+                            
+                            $this->printData($this->_file,['mode'=>'show', 'start'=>0, 'no_rows_markup'=>true, 'patt_type'=>$check_pattern]);
+                        }
+
                     
                     }
                     
@@ -201,7 +262,7 @@ Class CSVClass extends CSVModel{
            
             if(!isset($this->_opt['promise'])){
                 
-                echo '<hr><br><span class="info-info">Data statistics</span>: <br> CSV data contains '.$csv_rows_count.' rows <br> DB contains: '.$db_rows_count.' rows';
+                echo '<hr><h4><span class="info-info"><b>Data statistics:</b></span> </h4> CSV data contains '.$csv_rows_count.' rows <br> DB contains: '.$db_rows_count.' rows';
 
                     /* If Db Data contains MORE rows that CSV Data - stop file proceeding */
                 
@@ -223,11 +284,13 @@ Class CSVClass extends CSVModel{
             
             if(!isset($this->_opt['promise'])){
 
-                echo '<hr><br>New CSV data contains: '.$new_CSV_data_count.' rows'; 
+                echo '<hr><h4>New CSV data contains: '.$new_CSV_data_count.' rows</h4>'; 
 
-                echo '<br><br>New data List: ';
+                echo '<h4>New data List: ';
 
-                $this->printData($this->_new_file_data,['mode'=>'show']);
+                $this->printData($this->_new_file_data,['mode'=>'show', 'no_rows_markup'=>true, 'markup_rows'=>[]]);                
+
+                echo '</h4>';
 
                 /**
                  * Show "Perform Save to DB" button 
@@ -237,7 +300,7 @@ Class CSVClass extends CSVModel{
                 if($this->_new_file_data){
                     
                     echo '<form method="post" action="/data_checker.php?save=1&flush=1&promise=1">
-                    <input type="submit" value="Perform Save to DB"/>
+                    <input type="submit" class="btn btn-success" value="Perform Save to DB"/>
                     </form>';
                 }
 
@@ -250,7 +313,7 @@ Class CSVClass extends CSVModel{
             
             if(!isset($this->_opt['promise'])){
 
-                echo '<br><br>Old data List: '; 
+                echo '<hr><h4>Old data List: </h4>'; 
             
             }           
              
@@ -268,7 +331,7 @@ Class CSVClass extends CSVModel{
                     
                         $this->flushToDB();
                         
-                        $this->printData($this->_new_file_data,['mode'=>'show']);
+                        $this->printData($this->_new_file_data,['mode'=>'show','']);
 
                     } 
                     
@@ -285,10 +348,10 @@ Class CSVClass extends CSVModel{
 
                 if(!empty($nonidents_array)){
 
-                    echo '<span>DB Update Required!</span>';
-                }               
-                
-                $this->printData($this->_old_file_data,['mode'=>'update', 'data'=>$nonidents_array]);
+                    echo '<span class="warning-info"><h4>DB Update Required!</h4></span>';
+                }  
+                                               
+                $this->printData($this->_old_file_data,['mode'=>'update', 'data'=>$nonidents_array, 'no_rows_markup'=>true, 'markup_rows'=>$this->getMarkupRows()]);
 
             }
    
@@ -321,17 +384,29 @@ Class CSVClass extends CSVModel{
 
                 if(!isset($this->_opt['promise'])){
 
+                    echo '<hr><h4><span class="info-info">Final check::</span></h4>';
+                   
                     $final_check_array = $this->runConsistencyCheck();
 
-                    if(empty($final_check_array)){
-        
-                        echo '<br><br><span class="success-info">Final check:CSV Data is absolutely identical to DB</span>';
-                    }
-        
+                    if($final_check_array === false){
+
+                        echo '<h4><span class="warning-info">No DB Data found</span></h4>';
+                    } 
+
                     else{
-        
-                        echo '<br><br><span class="danger-info">CSV Data is NOT identical to DB Data. Please, Update your Data</span>';
+                        
+                        if(empty($final_check_array)){
+            
+                            echo '<h4><span class="success-info">Old CSV Data is absolutely identical to DB</span></h4>';
+                        }
+            
+                        else{
+            
+                            echo '<span class="danger-info"><h4>Crytical Error:</h4>CSV Data is NOT identical to DB Data. Please, Update your Data</span>';
+                        }
                     }
+
+                    
         
                 }
 
@@ -339,6 +414,125 @@ Class CSVClass extends CSVModel{
                 
         }
         
+    }
+
+    private function getMarkupRows(){         
+        
+        foreach($this->_checks_array as $check_pattern){
+
+            if(!empty($check_pattern)){
+
+                $markup_rows[$check_pattern] = $this->getAttentions($check_pattern);
+                
+            }             
+                      
+        } 
+        
+        /**
+         * Check if $markup_rows Array contains any values
+         */
+        $markup_rows_values = false;
+        
+        foreach ($markup_rows as $markup_row){
+
+            if(!empty($markup_row)){
+
+                $markup_rows_values = true;
+            }
+
+        }
+        
+        
+        if($markup_rows_values){
+
+            /* Placing Reps rows into $reps_rows Array */
+
+            foreach($markup_rows as $markup_key=>$markup_value){ 
+                
+                if(!empty($markup_value)){
+
+                    foreach($markup_value as  $item){                    
+
+                        $temp_rows = explode(',',$item);
+
+                        $all_markup_rows[$markup_key][] = $temp_rows;
+
+                    }  
+                    
+                }
+            }
+
+            return $all_markup_rows;
+        }  
+
+       return [];
+    }
+
+
+    private function printDataRows(array $rows_to_print, array $source_array, array $params){
+
+        // echo '<pre>';
+        // print_r($params);
+        // echo'</pre>';
+
+        $row_count = 0;
+
+        $row_nums = $params['row_num'];
+
+        foreach($rows_to_print as $row_to_print){
+
+            if(isset($params['table_header']) &&  $params['table_header'] === 'common'){
+
+                if( $row_count == 0){                   
+
+                    $params['first_row'] =  $params['row_num'][$row_count]; 
+                }   
+                
+            } 
+            
+            $params['row_num'] =   $row_nums[$row_count];                     
+
+            $this->printDataRow($source_array, $params);
+            
+            $row_count++;
+        }  
+    }
+
+    private function printMarkupRowNum(string $pattern, array $markup_rows){        
+
+        $rep_string="";        
+
+        $markup_rows = $this->getMarkupRows();
+
+        if(array_key_exists($pattern,$markup_rows)){
+
+            foreach($markup_rows[$pattern] as $markup_rows){
+
+                foreach($markup_rows as $markup_key=>$markup_row){
+
+                    if($markup_key >= count($markup_rows)-1){
+
+                        $rep_string .= $markup_row;
+                    }
+
+                    else{
+
+                        $rep_string .= $markup_row.",";
+                    }
+                    
+                    
+                }
+
+                $rep_string .= ' : ';
+            }
+
+        return substr($rep_string,0,strlen($rep_string)-3);
+
+        }
+
+        return false;
+
+                        
     }
 
     private function flushToDB(){
@@ -362,13 +556,19 @@ Class CSVClass extends CSVModel{
 
         $nonidents_array = $this->checkArraysOnIdentity($this->_db_data,$this->_file);
 
-        echo '<br><br><span class="warning-info">First non-identical row in DB: </span>'; 
+        echo '<hr><span class="warning-info">Last identical row in DB: </span>'; 
+
+        /**
+         * Print last CSV-DB identical row
+         */
         
         if(!empty($nonidents_array)){
 
-            $tmp[] = array_shift($nonidents_array);             
-                            
-            $this->printData( $tmp, ['mode'=>'show']);
+            $nonident_row_id = $this->getFirstNonIdentRow($nonidents_array); 
+
+            $last_ident_row = $this->getLastIdenticalRowData($this->getLastIdenticalRowNum($nonident_row_id));          
+            
+            if($last_ident_row) $this->printDataRow( $last_ident_row, ['row_style'=>'replace','first_row'=>0,'row_num'=>0]);                              
 
         }
         else{
@@ -381,6 +581,41 @@ Class CSVClass extends CSVModel{
         echo '<br><br><a href="/data_checker.php" class="btn btn-primary"> Back to Start </a>';
        
 
+    }
+
+    private function getLastIdenticalRowData(int $last_row_num){
+
+        $row_count = 0;
+
+        foreach($this->_db_data as $db_row){
+
+            if($row_count == $last_row_num){
+
+                return $db_row;
+            }
+
+            $row_count++;
+        }
+
+    }
+
+    private function getLastIdenticalRowNum(int $nonident_row_id){
+
+        $row_count = 0;
+            
+        foreach($this->_db_data as $db_row){
+
+            if($db_row['id'] == $nonident_row_id){
+
+                $last_row_id = $row_count-1;
+
+                return  $last_row_id;
+            }
+
+            $row_count++;
+        }
+
+        return false;
     }
 
     private function preUpdateRequirements(){
@@ -400,14 +635,14 @@ Class CSVClass extends CSVModel{
         $this->_db_data = $this->_db->getDBData($this->_opt['update_id']);            
 
         echo '<br><br><span class="warning-info">Ready to update DB row: </span>';
-        $this->printDataRow($this->_db_data[$this->_opt['update_id']]);                   
+        $this->printDataRow($this->_db_data[$this->_opt['update_id']], ['row_style'=>'updated','first_row'=>$this->_opt['update_id'],'row_num'=>$this->_opt['update_id'],'exclude_keys'=>['id']]);                   
         
-        echo '<br><span class="warning-info">to CSV row</span>: '.$this->_opt['update_id'];
+        echo '<br><span class="warning-info"> --> to CSV row</span>: '.$this->_opt['update_id'];
 
-        $this->printDataRow($this->_old_file_data[$this->_opt['update_id']]);                   
+        $this->printDataRow($this->_old_file_data[$this->_opt['update_id']], ['row_style'=>'replace','first_row'=>$this->_opt['update_id'],'row_num'=>$this->_opt['update_id']]);                   
 
         echo '<form method="post" action="/data_checker.php?save=1&update=2&promise=1&csv_id='.$this->_opt['update_id'].'&db_id='.$this->_db_data[$this->_opt['update_id']]['id'].'">
-        <input type="submit" value="Perform Update DB"/>
+        <br><br><input type="submit" class="btn btn-warning" value="Perform Update DB"/>
         </form>';
 
         return;
@@ -416,10 +651,21 @@ Class CSVClass extends CSVModel{
     private function runConsistencyCheck(){
 
         $this->_db_data = $this->_db->getDBData();
-                        
-        $final_check_array = $this->checkArraysOnIdentity($this->_file, $this->_db_data);  
         
-        return $final_check_array;    
+        /**
+         * Return false if no Db Data found (nothing to compare with CSV Data)
+         */
+        
+        if(empty( $this->_db_data)) return false;
+
+        /**
+         * Return $final_check_array 
+         */
+
+        $final_check_array = $this->checkArraysOnIdentity($this->_file, $this->_db_data);  
+    
+        return $final_check_array; 
+               
                 
     }
 
@@ -441,7 +687,7 @@ Class CSVClass extends CSVModel{
 
         if(!empty($rows_count)){
 
-            echo '<span class="info-info">DB row:'.$rows_count.' updated successfully</span>'; 
+            echo '<span class="success-info">DB row:'.$rows_count.' updated successfully</span>'; 
             
             $new_row = $this->_db->getDBDataRow($this->_opt['db_id']);
                
@@ -455,7 +701,7 @@ Class CSVClass extends CSVModel{
                 
             }
 
-            $this->printDataRow($output_arr);
+            $this->printDataRow($output_arr, ['row_style'=>'replace','first_row'=>$this->_opt['db_id'],'row_num'=>$this->_opt['db_id']]);
             
         }
 
@@ -469,15 +715,51 @@ Class CSVClass extends CSVModel{
         return;
     }
 
+    private function getFirstNonIdentRow($nonidents_array){
+
+        $tmp = array_shift($nonidents_array); 
+        
+       return $tmp['id'];                            
+        
+    }
+
+    
     private function printData(array $data, array $params){
 
-        $markup_row_num = 0;
-
-        $markup_row_keys = array();
-
-        $row_num = 0;     
+        // echo '<pre>';
+        // print_r($data);
+        // echo'</pre>';
 
 
+        if(!isset($params['markup_rows'])){
+
+            $markup_row_keys = array();
+        }
+        
+        else{
+
+            $markup_row_keys = $params['markup_rows'];
+        }
+
+
+
+        /** Get Rows Markup Table */
+
+        if(isset($params['patt_type'])){
+
+            $rows_markup_array =  $this->getRowsTypeMarkupArray($data,$markup_row_keys, $params['patt_type']);
+
+        }
+
+        else{
+            
+            $rows_markup_array =  $this->getRowsMarkupArray($data,$markup_row_keys);
+
+        }
+        
+        
+        /** Setting to  $data[$row_key]['Update'] Update button code of 'No change' label */
+      
         if(!empty($data)){
            
             if($params['mode'] == 'update'){            
@@ -488,16 +770,12 @@ Class CSVClass extends CSVModel{
 
                     if(isset($params['data'][$row_key]) && !empty($params['data'][$row_key])){                        
     
-                        $data[$row_key]['Update'] = '<form method="post" action="/data_checker.php?save=1&show_reps=0&update_id='.$row_key.'&promise=1"><input type="submit" class="btn btn-light" value="Update DB"/></form>';
-                        
-                        $markup_row_keys[] = $markup_row_num;
-                    
-                    }
-
-                    $markup_row_num++;
+                        $data[$row_key]['Update'] = '<form method="post" action="/data_checker.php?save=1&show_reps=0&update_id='.$row_key.'&promise=1"><input type="submit" class="btn btn-warning" value="Update DB"/></form>';
+                                            
+                    }                  
                 }
 
-            }
+            }            
 
             if($data[0]){
 
@@ -519,29 +797,31 @@ Class CSVClass extends CSVModel{
                 echo '</tr>';
 
 
-                /* Retrieving Table Body */
+                /* Retrieving Table Body */ 
+                
+                $row_num = 0;
 
+                foreach($data as $key=>$row){                  
+                       
 
-                foreach($data as $key=>$row){                    
-                                        
-                    echo '<tr>';
-
-                    /* Markup updated row */
-
-                    echo ($this->checkRowUpdate($row_num,$markup_row_keys))? '<td style="color:white; background:red">' : '<td>'; 
-
-                    /* Start rows number from 0 or 1 depending on $params['start'] */
+                    /* Check if should markup updated row */
                     
-                    echo(!isset($params['start']))?($row_num + 1).'</td>':$row_num.'</td>'; 
-                                    
-                    foreach($row as $value){
+                    if(!empty($rows_markup_array)){
 
-                        echo ($this->checkRowUpdate($row_num,$markup_row_keys))? '<td style="color:white; background:red">' : '<td>';   
-
-                        echo $value.'</td>';            
-                                
+                        $this->printMarkupedRow($row_num, $rows_markup_array, $params);                        
                     }
 
+
+                    /* Start rows number from 0 or 1 depending on $params['start'] */                 
+                                        
+                    echo(!isset($params['start']))?'<td>'.($row_num + 1).'</td>':'<td>'.$row_num.'</td>'; 
+                                    
+                    foreach($row as $value){                        
+                        
+                        echo '<td>'.$value.'</td>';                                                          
+                                
+                    }
+                    
                     $row_num++;
 
                     echo '</tr>';
@@ -560,44 +840,437 @@ Class CSVClass extends CSVModel{
         
     }
 
-    private function checkRowUpdate(int $row_num,array $markup_row_keys){
+    private function printMarkupedRow(int $row_num, array $rows_markup_array, array $params){
 
-        foreach($markup_row_keys as $markup_key){
+        if($row_type = $this->checkRowMarkup($row_num,$rows_markup_array)) {
+                       
+            /**
+             * if printData func was called with params['no_rows_markup'] - no row markup applied
+             */
 
-            if($row_num == $markup_key){
+            if(isset($params['no_rows_markup']) && $params['no_rows_markup'] === true){$row_type['type'] = "default";}
 
-                return true;
+            switch($row_type['type']){
+
+                case "row_first_num":
+
+                 echo '<tr style="background:rgba(0,128,0,'.(0.3*$row_type['count']).');">';
+
+                 break;
+
+                 case "row_second_num":
+
+                 echo '<tr style="background:rgba(255,0,0,'.(0.3*$row_type['count']).');">';
+
+                 break;
+                 
+                 case "row_mixed":
+
+                 echo '<tr style="background:rgba(255,127,80,'.(0.3*$row_type['count']).');">';
+
+                 break; 
+
+                 default:
+
+                 echo '<tr>';
+
+            }                                                             
+        
+        } 
+
+    }
+
+    private function checkRowMarkup(int $row_num,array $rows_markup_array){
+
+        // echo'<pre>';
+        // print_r($rows_markup_array);
+        // echo'</pre>';
+
+        $row_type = array();
+
+        $type_count = 0;
+
+        foreach($rows_markup_array as $rows_markup_pattern){
+
+            foreach($rows_markup_pattern as $rows_markup_type=>$rows_markup_vals){
+
+                foreach($rows_markup_vals as $row_val){
+
+                    if($row_num == $row_val){
+
+                        $type_count++;                        
+
+                        $row_type=['type'=>$rows_markup_type, 'count'=>$type_count];                    
+                    }
+                }                    
+            }                      
+        }
+
+        return $row_type;       
+    }
+
+
+    private function getRowsTypeMarkupArray(array $data,array $markup_row_keys, string $type){       
+
+        $row_nums = array_keys($data);
+        
+        if(array_key_exists($type, $markup_row_keys)){
+
+            $markup_type_row_keys[$type] = $markup_row_keys[$type];
+        
+        // echo '<pre>';
+        // print_r($markup_type_row_keys);
+        // echo'</pre>';        
+
+            $markup_row = array();
+
+            foreach($row_nums as $row_num){
+
+                foreach($markup_type_row_keys as $patt_key=>$patt_row){ 
+                
+                    //echo '<br>Checking pattern: '. $patt_key.' for ROW NUM: '.$row_num;               
+                    
+        
+                    foreach($patt_row as $row){
+
+                        $perPattern_rows_count = 0;
+        
+                        foreach($row as $item){
+        
+                            if($row_num == $item && strlen($item)){
+                            
+                                if($perPattern_rows_count == 0){
+            
+                                    //echo '<br>perPattern_rows_count: '.$perPattern_rows_count;
+            
+                                    //echo '<br>Check $row_num: '.$row_num.' with : '.$item.' :: MARK FIRST ROW';
+            
+                                    $markup_row[$patt_key]['row_first_num'][] = $row_num;                           
+            
+                                } 
+                                
+                                else{
+        
+                                // echo '<br>Check $row_num: '.$row_num.' with : '.$item.' :: ELSE ROW';
+                                
+                                $markup_row[$patt_key]['row_second_num'][] = $row_num;  
+                                }                            
+                                                    
+                            }
+        
+                            $perPattern_rows_count++;
+            
+                        }
+                    }  
+        
+                }
+            }
+
+            return ($markup_row)? $markup_row:false;
+        }
+        
+    }
+
+
+
+    private function getRowsMarkupArray(array $data,array $markup_row_keys){       
+
+        $row_nums = array_keys($data); 
+        
+        $markup_rows_array = array();
+
+        foreach($row_nums as $row_num){
+
+            foreach($markup_row_keys as $patt_key=>$patt_row){ 
+            
+                //echo '<br>Checking pattern: '. $patt_key.' for ROW NUM: '.$row_num;               
+                
+    
+                foreach($patt_row as $row){
+
+                    $perPattern_rows_count = 0;
+    
+                    foreach($row as $item){
+    
+                        if($row_num == $item && strlen($item)){
+                        
+                            if($perPattern_rows_count == 0){
+        
+                                //echo '<br>perPattern_rows_count: '.$perPattern_rows_count;
+        
+                                //echo '<br>Check $row_num: '.$row_num.' with : '.$item.' :: MARK FIRST ROW';
+        
+                                $markup_rows_array[$patt_key]['row_first_num'][] = $row_num;                           
+        
+                            } 
+                            
+                            else{
+    
+                               // echo '<br>Check $row_num: '.$row_num.' with : '.$item.' :: ELSE ROW';
+                            
+                               $markup_rows_array[$patt_key]['row_second_num'][] = $row_num;  
+                            }                            
+                                                   
+                        }
+    
+                        $perPattern_rows_count++;        
+                    }
+                }
             }
         }
 
-        return false;
+        // echo '<pre>';
+        // print_r($markup_rows_array);
+        // echo '<pre>';
+
+        /**
+         * Check if $markup_rows_array contains mixed_rows
+         * If contains - override $markup_rows_array with $markup_with_mixed_array
+         */
+
+        $markup_with_mixed_array= $this->checkMixedRows($markup_rows_array);
+
+        if($markup_with_mixed_array) $markup_rows_array = $this->checkMixedRows($markup_rows_array);
+
+        // echo '<pre>';
+        // print_r($markup_rows_array);
+        // echo '<pre>';
+
+        return ($markup_rows_array)? $markup_rows_array:false;
+
     }
 
-    private function printDataRow(array $data){
-       
+    private function checkMixedRows($markup_rows_array){
+
+        /**
+         * Check mixed type rows
+         */
+
+        $curr_scnd_nums = array();
+        $mixed_rows = array();
+
+        /**
+         * Get all first_num rows into Array
+         */
+
+        foreach($markup_rows_array as $key=>$markup_row_patt){            
+
+           if(isset($markup_row_patt['row_second_num']) && !empty($markup_row_patt['row_second_num'])){
+
+                foreach($markup_row_patt['row_second_num'] as $value){
+
+                    $curr_scnd_nums[] =$value;
+
+                }
+                           
+            }
+        }
+
+        if(isset($curr_scnd_nums) && !empty($curr_scnd_nums)) {
+
+            $curr_scnd_nums = array_unique($curr_scnd_nums);
+
+            /**
+             * Get all second_num rows where first_nums Array items are presented
+             */
+
+            foreach($markup_rows_array as $key=>$markup_row_patt){   
+                
+                //echo '<br>checking f_n_pattern: '.$key;
+
+                if(isset($markup_row_patt['row_first_num']) && !empty($markup_row_patt['row_first_num'])){                
+
+                    foreach($markup_row_patt['row_first_num'] as $f_n_value){
+
+                        //echo '<br>checking f_n_row: '.$f_n_value;
+    
+                        foreach($curr_scnd_nums as $s_n_key=>$s_n_value){
+
+                            if(in_array($s_n_value,$markup_row_patt['row_first_num'])){
+
+                                //echo '<br>found scnd num row value: '.$s_n_value.' in first_num row value: '.$f_n_value;
+
+                                $s_n_to_mixed[] = $f_n_value;
+                            }                            
+                        }                    
+                    }
+                }
+            }
+
+            if(isset($s_n_to_mixed) && !empty($s_n_to_mixed)) {
+
+                $s_n_to_mixed = array_unique($s_n_to_mixed);
+    
+                /**
+                 * Unsetting first_num and second_num rows if ther are of mixed_type
+                 * Setting mixed_row types in proper $markup_row_patt_key
+                 */
+    
+                foreach($markup_rows_array as $markup_row_patt_key=>$markup_row_patt){
+    
+                    foreach($markup_row_patt as $markup_row_type_key=>$row_item){
+    
+                        foreach($row_item as $item_key=>$item){
+    
+                            foreach($s_n_to_mixed as $s_n_item){
+    
+                                if($s_n_item == $item){   
+                                    
+                                    /**
+                                     *  Unset first_num Array item if its mixed
+                                     */
+                                    
+                                    unset($markup_rows_array[$markup_row_patt_key][$markup_row_type_key][$item_key]);
+    
+                                    /**
+                                     *  Unset markup_row_type_key in Array it became empty
+                                     */
+    
+                                    if(empty($markup_rows_array[$markup_row_patt_key][$markup_row_type_key])){
+    
+                                        unset($markup_rows_array[$markup_row_patt_key][$markup_row_type_key]);
+                                    }
+    
+                                    $markup_rows_array[$markup_row_patt_key]['row_mixed'][] = $item;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // echo '<pre>';
+                // print_r($markup_rows_array);
+                // echo'</pre>';
+
+                return  $markup_rows_array;
+            }
+
+            return false;
+        } 
+
+        return false;
+        
+        
+
+        
+    }
+
+
+    private function printDataRow(array $data, array $params){  
+        
+        // echo '<pre>';
+        // print_r($params);
+        // echo'</pre>';
+      
 
         if($data){          
 
             echo '<table class="print_data_table">'; 
 
-            /* Retrieving Table Head */
-            echo '<tr>';
-            foreach($data as $key=>$value){             
+            /**
+             * Printing Row table Header
+             */
 
-                echo '<td>'.$key.'</td>';                
-                
-            }          
-            echo '</tr>';
+            /* If exists - Add row_num to the Table */
+            if(isset($params['first_row']) && $params['first_row'] === $params['row_num']){
+
+                /* Retrieving Table Head */
+                echo '<tr>';
+
+                echo (isset($params['row_num']))?'<td> № </td>':'';           
+
+                foreach($data as $key=>$value){             
+
+                    /**
+                    * Apply $params['exclude_keys'] - exclude printing fields set in $params['exclude_keys']
+                    */
+
+                    if(isset($params['exclude_keys'])){
+
+                        echo(!$this->checkExcludedKeys($key, $params['exclude_keys']))?'<td>'.$key.'</td>':'';
+                    
+                    }
+
+                    else{
+
+                        echo '<td>'.$key.'</td>';
+                    }                 
+                    
+                }          
+                echo '</tr>';
+
+            }
+
+            else{
+
+                /* Retrieving Hidden Table Head */
+                echo '<tr style="visibility:hidden; line-height:1px; padding:0px">';
+
+                echo (isset($params['row_num']))?'<td style="padding:0px 5px"> № </td>':'';           
+
+                foreach($data as $key=>$value){  
+                               
+
+                    echo '<td style="padding:0px 5px">'.$key.'</td>';                
+                    
+                }          
+                echo '</tr>';
+
+
+            }
+            
+            /** 
+             * Applying Row style 
+             */
+            
+             if(isset($params['row_style'])){
+
+                switch($params['row_style']){
+
+                    case 'deleted':
+
+                    echo'<tr style="background:rgba(255,0,0,0.3)">'; 
+
+                    break;
+
+                    case 'updated':
+
+                    echo'<tr style="background:rgba(255,69,0,0.3)">';
+
+                    break;
+
+                    case 'replace':
+
+                    echo'<tr style="background:rgba(0,255,127,0.3)">';
+
+                    break;
+                }
+             }             
+             
+             /* If exists - Add row_num to the Table */           
+
+            echo (isset($params['row_num']))?'<td>'.$params['row_num'].'</td>':'';
 
 
              /* Retrieving Table Body */
+            foreach($data as $key=>$row){
 
-             echo '<tr>';            
+                /**
+                 * Apply $params['exclude_keys'] - exclude printing fields set in $params['exclude_keys']
+                 */
 
-            foreach($data as $row){
+                if(isset($params['exclude_keys'])){
 
-                echo '<td>'.$row.'</td>';          
-                 
+                    echo(!$this->checkExcludedKeys($key, $params['exclude_keys']))?'<td>'.$row.'</td>':'';
+                  
+                }
+
+                else{
+
+                    echo '<td>'.$row.'</td>';
+                }               
+                
+                                      
             } 
             
             echo '</tr>';
@@ -611,6 +1284,23 @@ Class CSVClass extends CSVModel{
             echo '<span class="success-info">No data to print</span>';
         }
         
+    }
+
+    private function checkExcludedKeys(string $key, array $ex_keys){
+
+        if(isset($ex_keys) && !empty($ex_keys)){ 
+
+            foreach($ex_keys as $ex_key){
+
+                if($key == $ex_key){
+
+                    return true;
+                }
+            }
+
+        return false;
+        }
+
     }
 
     private function checkArraysOnIdentity(array $test_array, array $etalon){ 
@@ -692,37 +1382,58 @@ Class CSVClass extends CSVModel{
 
     }
 
-    private function readCSVfile(){
+    private function readCsvFile($url){
+                
 
         $row = 0;
 
-        if (($handle = fopen($_SERVER['DOCUMENT_ROOT']."/data/test.csv", "r")) !== FALSE) {
+        if(file_exists ($_SERVER['DOCUMENT_ROOT'].$url)){
             
-            while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {                
-                
-                $row++;
 
-                for ($i=0; $i < count($data); $i++) {
+            $handle = fopen($_SERVER['DOCUMENT_ROOT'].$url, "r");
 
-                    if($row == 1){
-
-                        $this->_fields[$i] = $data[$i];                        
-                    } 
+            if($handle){
+            
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {                
                     
-                    else{
-
-                        $this->_file[$row-2][$this->_fields[$i]] = $data[$i];
+                    $row++;
+    
+                    for ($i=0; $i < count($data); $i++) {
+    
+                        if($row == 1){
+    
+                            $this->_fields[$i] = $data[$i];                        
+                        } 
+                        
+                        else{
+    
+                            $this->_file[$row-2][$this->_fields[$i]] = $data[$i];
+                        }
+                        
                     }
-                    
                 }
-            }
-            fclose($handle);
 
-        } 
+                fclose($handle);
+    
+            } 
+
+            else{
+
+                echo 'Cant open CSV file';
+            }
+
+        }
+
+        else{
+
+            echo 'CSV dont exist';
+
+            return false;
+        }
 
     }
 
-    public function getCityData($slug){
+    public function getCityFromCSV($slug){
 
         $response = array();
 
@@ -731,34 +1442,92 @@ Class CSVClass extends CSVModel{
             if($row['city'] == $slug){
 
                 $response[] = $row;
-
             }
         }
 
         echo json_encode($response);
     } 
 
-    private function printAttentions($pattern){        
+
+    public function getCityFromDB($slug){        
+       
+
+        $response = array();       
+
+        $response = $this->_db->getPointsByName($slug);        
         
-        if($count_patterns = $this->getCountPatterns($pattern)){
+        echo json_encode($response);
+    }
 
-            echo '<br><br><span class="warning-info">ATTENTION!</span>';  
 
-            foreach($count_patterns as $row){
+    private function getAttentions($pattern){ 
+        
+        $count_patterns = $this->getCountPatterns($pattern);
+        
+        if(!empty($count_patterns)){
 
-                echo '<br/><span class="warning-info">'.$row['count'].' Repeating patterns ('.$row['pattern'].') found at CSV rows: '.$row['rows'].' (Rows '.$this->getCSVRows($row['rows']).' in CSV file)</span>';
-                echo '<br/><span class="danger-info">Must be deleted '.($row['count']-1).' row(s): '.substr($row['rows'],2, strlen($row['rows'])).'</span>';
-    
-            }           
+            return $this->getAttentionsRow($pattern, $count_patterns);
 
         }
+        
+        return false;
+             
+    }
 
+    private function getAttentionsRow(string $pattern, array $count_patterns){
+
+        $reps_rows = array(); 
+
+        foreach($count_patterns as $row){                
+
+            $row['rows'] = str_replace(",,","",$row['rows']);
+                                                  
+            if(isset($row['rows']) && !empty($row['rows'])){                
+            
+                $reps_rows[] = $row['rows'];
+
+            }
+        }       
+               
+        return $reps_rows;
+    }
+
+
+    private function printPatternAttentions(string $pattern){
+
+        $reps_rows = array(); 
+
+        $count_patterns = $this->getCountPatterns($pattern);
+
+        echo '<br><span class="warning-info"><h3>ATTENTION!</h3></span>';
+        
+        if(!empty($count_patterns)){
+
+            foreach($count_patterns as $row){
+                
+                if(isset($row) && !empty($row)){
+
+                $row['rows'] = str_replace(",,","",$row['rows']);
+    
+                echo '<br><b><span class="warning-info">'.$row['count'].' Repeating pattern " '.$pattern.' " ('.$row['pattern'].') found at CSV rows: '.$row['rows'].' </b>(Rows '.$this->getCSVRows($row['rows']).' in CSV file)</span>';
+                echo '<br><br><span class="danger-info">Must be deleted '.($row['count']-1).' row(s): '.substr($row['rows'],2, strlen($row['rows'])).'</span><br><br>';
+                echo'<hr>'; 
+                
+                return true;
+                
+                }
+
+                return false;
+                
+            }
+            
+        }
+        
         else{
 
-            echo '<br/><span class="success-info"> No '.$pattern.' pattern repeats found</span>';
+            return false;
+        }
 
-        }          
-               
     }
 
     private function getCSVRows($data){
@@ -817,7 +1586,7 @@ Class CSVClass extends CSVModel{
     
                     $count_patterns[$count_patterns_row]['count'] = "";
     
-                    $count_patterns[$count_patterns_row]['rows'] = "";
+                    $count_patterns[$count_patterns_row]['rows'] = ",";
     
                     $count_patterns_row ++;
     
@@ -848,7 +1617,7 @@ Class CSVClass extends CSVModel{
     
                         if(!$count_patterns[$pat_key]['rows']){
     
-                            $count_patterns[$pat_key]['rows'] .= $key;
+                            $count_patterns[$pat_key]['rows'] .= ','.$key;
                         }
     
                         else{
@@ -944,6 +1713,8 @@ Class CSVClass extends CSVModel{
 
         $rows_deleted = 0;
 
+        $deleted_row = 0;
+
         $rows_log = "";
       
         foreach ($this->_file as $key=>$value){            
@@ -959,12 +1730,14 @@ Class CSVClass extends CSVModel{
                     $repeats_array[$pattern]++;                 
 
                     if($repeats_array[$pattern] > 1){                        
-
-                        unset($this->_file[$key]);
-
+                     
+                        unset($this->_file[$key]); 
+                        
+                        $deleted_row =  $row_count;
+                       
                         $rows_deleted++;
 
-                        $rows_log .= $row_count.' ,';
+                        $rows_log .= $row_count.',';
                     }
                     
                 }                
@@ -975,8 +1748,8 @@ Class CSVClass extends CSVModel{
             
             $row_count++;
 
-        }     
-        
+        } 
+       
         return [
             
             'c_pattern'=>$c_pattern,
@@ -986,6 +1759,8 @@ Class CSVClass extends CSVModel{
             'row_count'=>$row_count,
 
             'rows_log' => $rows_log,
+
+            'deleted_row'=>$deleted_row,
 
             'compared_row'=>$compared_row
 
