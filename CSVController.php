@@ -3,10 +3,10 @@
 require_once($_SERVER['DOCUMENT_ROOT'].'/models/CSVModel.php');
 
 
-if(isset($_GET['slug'])){   
- 
-    $csv = new CSVClass;   
-
+if(isset($_GET['slug'])){
+   
+    $csv = new CSVClass;    
+    
     $csv->getCityFromDB($_GET['slug']);
 
 }
@@ -67,13 +67,13 @@ class CSVClass{
          * Set $_GET Data to $this->_opt
          */
         
-        $this->setOptsFromGET(); 
+        $this->setOptsFromGET();        
         
         /**
          * Load CSV file Data into $this->_file
          */
 
-        $this->readCSVfile($this->_file_url);
+        $this->readCsvFile($this->_file_url);
 
         /**
          * Copy initial CSV file Data into $this->_init_file
@@ -88,6 +88,7 @@ class CSVClass{
         $this->_db = new CSVModel; 
        
     }
+
 
     public function getOpts(){
 
@@ -396,12 +397,12 @@ class CSVClass{
                         
                         if(empty($final_check_array)){
             
-                            echo '<hr><h4><span class="success-info">Final check:CSV Data is absolutely identical to DB</span></h4>';
+                            echo '<h4><span class="success-info">Old CSV Data is absolutely identical to DB</span></h4>';
                         }
             
                         else{
             
-                            echo '<hr><span class="danger-info"><h4>Crytical Error:</h4>CSV Data is NOT identical to DB Data. Please, Update your Data</span>';
+                            echo '<span class="danger-info"><h4>Crytical Error:</h4>CSV Data is NOT identical to DB Data. Please, Update your Data</span>';
                         }
                     }
 
@@ -1381,11 +1382,13 @@ class CSVClass{
 
     }
 
-    private function readCSVfile(string $url){
+    private function readCsvFile($url){
+                
 
         $row = 0;
 
         if(file_exists ($_SERVER['DOCUMENT_ROOT'].$url)){
+            
 
             $handle = fopen($_SERVER['DOCUMENT_ROOT'].$url, "r");
 
@@ -1414,9 +1417,16 @@ class CSVClass{
     
             } 
 
+            else{
+
+                echo 'Cant open CSV file';
+            }
+
         }
 
         else{
+
+            echo 'CSV dont exist';
 
             return false;
         }
@@ -1439,12 +1449,13 @@ class CSVClass{
     } 
 
 
-    public function getCityFromDB($slug){
+    public function getCityFromDB($slug){        
+       
 
         $response = array();       
 
-        $response = $this->_db->getPointsByName($slug);      
-
+        $response = $this->_db->getPointsByName($slug);        
+        
         echo json_encode($response);
     }
 

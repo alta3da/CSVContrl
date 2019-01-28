@@ -2,7 +2,7 @@
 
 require_once($_SERVER['DOCUMENT_ROOT'].'/models/PDOModel.php');
 
-Class PDOController extends PDOModel{
+class PDOController extends PDOModel{
 
     private $_host;
 
