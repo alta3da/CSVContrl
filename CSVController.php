@@ -2,12 +2,11 @@
 
 require_once($_SERVER['DOCUMENT_ROOT'].'/models/CSVModel.php');
 
-
-if(isset($_GET['slug'])){
+if(isset($_POST['slug'])){
    
     $csv = new CSVClass;    
     
-    $csv->getCityFromDB($_GET['slug']);
+    $csv->getCityFromDB($_POST['slug']);
 
 }
 
@@ -64,10 +63,10 @@ class CSVClass{
         ];
 
         /**
-         * Set $_GET Data to $this->_opt
+         * Set $_POST Data to $this->_opt
          */
         
-        $this->setOptsFromGET();        
+        $this->setOptsFromPOST();        
         
         /**
          * Load CSV file Data into $this->_file
@@ -299,8 +298,11 @@ class CSVClass{
                 
                 if($this->_new_file_data){
                     
-                    echo '<form method="post" action="/data_checker.php?save=1&flush=1&promise=1">
+                    echo '<form method="post">
                     <input type="submit" class="btn btn-success" value="Perform Save to DB"/>
+                    <input type="hidden" name="save" value="1"/>
+                    <input type="hidden" name="flush" value="1"/>
+                    <input type="hidden" name="promise" value="1"/>
                     </form>';
                 }
 
@@ -641,7 +643,12 @@ class CSVClass{
 
         $this->printDataRow($this->_old_file_data[$this->_opt['update_id']], ['row_style'=>'replace','first_row'=>$this->_opt['update_id'],'row_num'=>$this->_opt['update_id']]);                   
 
-        echo '<form method="post" action="/data_checker.php?save=1&update=2&promise=1&csv_id='.$this->_opt['update_id'].'&db_id='.$this->_db_data[$this->_opt['update_id']]['id'].'">
+        echo '<form method="post">        
+        <input type="hidden" name="save" value="1" />
+        <input type="hidden" name="update" value="2" />
+        <input type="hidden" name="promise" value="1" />
+        <input type="hidden" name="csv_id" value="'.$this->_opt['update_id'].'" />
+        <input type="hidden" name="db_id" value="'.$this->_db_data[$this->_opt['update_id']]['id'].'" />
         <br><br><input type="submit" class="btn btn-warning" value="Perform Update DB"/>
         </form>';
 
@@ -710,7 +717,11 @@ class CSVClass{
             echo '<span class="warning-info">No rows affected. Check your Data or DB Connection</span>';
         }  
         
-        echo '<br><br><a href="/data_checker.php?save=1&show_reps=0" class="btn btn-success"> Back to Optimizer </a>';
+        echo '<form method="POST">
+            <input type="hidden" name="save" value="1" />
+            <input type="hidden" name="show_reps" value="0" />
+            <input type="submit" class="btn btn-success" value="Back to Optimizer" />            
+            </form>';
 
         return;
     }
@@ -770,7 +781,13 @@ class CSVClass{
 
                     if(isset($params['data'][$row_key]) && !empty($params['data'][$row_key])){                        
     
-                        $data[$row_key]['Update'] = '<form method="post" action="/data_checker.php?save=1&show_reps=0&update_id='.$row_key.'&promise=1"><input type="submit" class="btn btn-warning" value="Update DB"/></form>';
+                        $data[$row_key]['Update'] = '<form method="post">
+                        <input type="hidden" name="save" value="1" />
+                        <input type="hidden" name="show_reps" value="0" />
+                        <input type="hidden" name="update_id" value="'.$row_key.'" />
+                        <input type="hidden" name="promise" value="1" />
+                        <input type="submit" class="btn btn-warning" value="Update DB"/>
+                        </form>';
                                             
                     }                  
                 }
@@ -1365,7 +1382,7 @@ class CSVClass{
         }
     }
 
-    private function setOptsFromGET(){
+    private function setOptsFromPOST(){
 
         /* Set default Options */
 
@@ -1375,7 +1392,7 @@ class CSVClass{
 
         /* Replace default Options with GET params */
 
-        foreach($_GET as $key=>$value){
+        foreach($_POST as $key=>$value){
 
             $this->_opt[$key] = $value;
         }  
